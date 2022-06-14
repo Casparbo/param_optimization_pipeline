@@ -1,5 +1,13 @@
 #!/usr/bin/env nextflow
 
+def determine_version() {
+  name = params.container.split("/").last()
+  name_no_appendix = name.split("--").first()
+  version_nr = name_no_appendix.split(":").last()
+
+  return version_nr
+}
+
 process freebayes {
   container = params.container
 
@@ -76,8 +84,8 @@ process combineVCF {
   tuple val(minQsum), val(readMismatchLimit), val(minAlternateFraction), val(noMnps), val(noComplex), path(vcf, stageAs: "*.vcf")
 
   output:
-  publishDir "${params.outdir}/FREEBAYES_${minQsum}_${readMismatchLimit}_${minAlternateFraction}_${noMnps}_${noComplex}"
-  tuple val("FREEBAYES_${minQsum}_${readMismatchLimit}_${minAlternateFraction}_${noMnps}_${noComplex}"), path("combined.vcf")
+  publishDir "${params.outdir}/FREEBAYES_${determine_version()}_${minQsum}_${readMismatchLimit}_${minAlternateFraction}_${noMnps}_${noComplex}", mode:"copy"
+  tuple val("FREEBAYES_${determine_version()}_${minQsum}_${readMismatchLimit}_${minAlternateFraction}_${noMnps}_${noComplex}"), path("combined.vcf")
 
   script:
   """
