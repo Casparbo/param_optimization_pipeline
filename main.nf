@@ -69,6 +69,10 @@ process vcfPandas {
   path "metadata.csv", emit: metadata
   path "matrix.csv"
   path "heatmap.png"
+  path "input_sample_counts.csv"
+  path "sample_position_counts.csv"
+  path "ref_sample_counts.csv"
+  path "ref_position_counts.csv"
 
   script:
   """
@@ -88,7 +92,7 @@ process metaAnalysis {
   """
 }
 
-include {callVariants} from "./freebayes.nf"
+include {callVariants} from "./${params.workflow}"
 
 workflow {
   fasta = Channel.fromPath(params.fasta)
