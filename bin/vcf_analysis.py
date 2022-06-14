@@ -51,14 +51,7 @@ def parse_vcf(input_file):
 	return assemble_sort_df(chromosomes, positions, refs, alts, new_data_columns)
 
 
-def quantify_differences(sample_df, ref_df):
-	"""collect data about the differences in calls between ref and sample"""
-	
-	# check if everything is the same
-	if sample_df.equals(ref_df):
-		print("Dataframes are equal!")
-		return
-
+def remove_differing_alts(sample_df, ref_df):
 	different_alts = 0
 
 	# remove rows where alts are different between ref and sample
@@ -70,18 +63,70 @@ def quantify_differences(sample_df, ref_df):
 			ref_df.drop(index=(chrom, pos), inplace=True)
 			sample_df.drop(index=(chrom, pos), inplace=True)
 
-	comb_df = pd.DataFrame()
-	count_df = pd.DataFrame()
+	return different_alts
 
-	for i, column in enumerate(sample_df.columns[2:]):
+
+def count_states(sample_df):
+	# count states row- and position-wise
+	sample_state_count = pd.DataFrame()
+	position_state_count = pd.DataFrame()
+	
+	for column in sample_df.columns[2:]:
+		sample_state_count = pd.concat([sample_state_count, sample_df[column].value_counts(dropna=False)], axis=1)
+
+	for i, row in sample_df.iterrows():
+		position_state_count = pd.concat([position_state_count, row[2:].value_counts(dropna=False)], axis=1)
+
+	normalize = lambda s: s.apply(lambda e: e/s.sum())
+
+	sample_state_norm = sample_state_count.apply(normalize, axis=1)
+	position_state_norm = position_state_count.apply(normalize, axis=1)
+
+	combine_count_norm = lambda x, y: x.combine(y, lambda a, b: f"{a}|{b:%}")
+
+	sample_state_df = sample_state_count.combine(sample_state_norm, combine_count_norm)
+	position_state_df = position_state_count.combine(position_state_norm, combine_count_norm)
+
+	return sample_state_df, position_state_df
+
+
+def count_differences(sample_df, ref_df):
+	# build difference DataFrame and count variations
+	comb_df = pd.DataFrame()
+	sample_count_df = pd.DataFrame()
+
+	# build combination dataFrame
+	for column in sample_df.columns[2:]:
 		new_column = sample_df[column].combine(ref_df[column], lambda x, y: f"{y}>{x}", fill_value=".")
 		comb_df[column] = new_column
-		count_df = pd.concat([count_df, new_column.value_counts(dropna=False)], axis=1) 
 
-	total_counts = count_df.sum(axis=1).sort_values(ascending=False).astype("int32")
+	# count combinations per sample
+	for column in comb_df.columns:
+		sample_count_df = pd.concat([sample_count_df, comb_df[column].value_counts(dropna=False)], axis=1)
+
+	total_counts = sample_count_df.sum(axis=1).sort_values(ascending=False).astype("int32")
 	norm_total_counts = total_counts.apply(lambda val: (val*100)/total_counts.sum())
+	total_count_df = pd.concat([total_counts, norm_total_counts], axis=1, keys=("absolute", "percentage"))
+
+	return total_count_df
+
+
+def quantify_differences(sample_df, ref_df):
+	"""collect data about the differences in calls between ref and sample"""
 	
-	return pd.concat([total_counts, norm_total_counts], axis=1, keys=("absolute", "percentage")), different_alts
+	# check if everything is the same
+	if sample_df.equals(ref_df):
+		print("Dataframes are equal!")
+		return
+
+	different_alts = remove_differing_alts(sample_df, ref_df)
+
+	sample_state_dfs = count_states(sample_df)
+	ref_state_dfs = count_states(ref_df)
+
+	total_count_df = count_differences(sample_df, ref_df)
+	
+	return total_count_df, sample_state_dfs, ref_state_dfs, different_alts
 
 
 def build_matrix(count_df):
@@ -183,7 +228,7 @@ def main():
 	sample_df = parse_vcf(args.input_file)
 	ref_df = parse_vcf(args.comparison_file)	
 
-	analysis_result, different_alts = quantify_differences(sample_df, ref_df)
+	analysis_result, sample_state_dfs, ref_state_dfs, different_alts = quantify_differences(sample_df, ref_df)
 			
 	percentage_matrix, absolute_matrix = build_matrix(analysis_result)
 
@@ -191,6 +236,18 @@ def main():
 
 	params, param_names = parse_param_string(args.param_string)
 	metadata = calc_metadata(percentage_matrix, absolute_matrix, different_alts, params, param_names)
+
+	with open("input_sample_counts.csv", "w") as f:
+		sample_state_dfs[0].to_csv(f)
+
+	with open("sample_position_counts.csv", "w") as f:
+		sample_state_dfs[1].to_csv(f)
+
+	with open("ref_sample_counts.csv", "w") as f:
+		ref_state_dfs[0].to_csv(f)
+
+	with open("ref_position_counts.csv", "w") as f:
+		ref_state_dfs[1].to_csv(f)
 
 	with open("metadata.csv", "w") as f:
 		metadata.to_csv(f)
