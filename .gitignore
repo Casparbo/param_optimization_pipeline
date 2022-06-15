@@ -1,5 +1,5 @@
-work/**
+work
 .nextflow*
-output/**
-input/**
-local_conf/**
+output
+input
+local_conf
