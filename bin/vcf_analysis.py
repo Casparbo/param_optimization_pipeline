@@ -182,18 +182,24 @@ def calc_metadata(percentage_df, absolute_df, different_alts, params, param_name
 	sample_dots_abs = absolute_df["."].sum()
 	ref_dots_perc = percentage_df.loc["."].sum()
 	ref_dots_abs = absolute_df.loc["."].sum()
+	delta_dots_perc = ref_dots_perc - sample_dots_perc
+	delta_dots_abs = ref_dots_abs - sample_dots_abs
 
 	# sums of hets
 	sample_hets_perc = percentage_df["0/1"].sum()
 	sample_hets_abs = absolute_df["0/1"].sum()
 	ref_hets_perc = percentage_df.loc["0/1"].sum()
 	ref_hets_abs = absolute_df.loc["0/1"].sum()
+	delta_hets_perc = ref_hets_perc - sample_hets_perc
+	delta_hets_abs = ref_hets_abs - sample_hets_abs
 
 	# sums of homs
 	sample_homs_perc = percentage_df["1/1"].sum() + percentage_df["0/0"].sum()
 	sample_homs_abs = absolute_df["1/1"].sum() + absolute_df["0/0"].sum()
 	ref_homs_perc = percentage_df.loc["1/1"].sum() + percentage_df.loc["0/0"].sum()
 	ref_homs_abs = absolute_df.loc["1/1"].sum() + absolute_df.loc["0/0"].sum()
+	delta_homs_perc = ref_homs_perc - sample_homs_perc
+	delta_homs_abs = ref_homs_abs - sample_homs_abs
 
 	idx = pd.MultiIndex.from_tuples(tuples = [params + ["sample", "dots"],
 												params + ["sample", "hets"],
@@ -201,14 +207,19 @@ def calc_metadata(percentage_df, absolute_df, different_alts, params, param_name
 												params + ["ref", "dots"],
 												params + ["ref", "hets"],
 												params + ["ref", "homs"],
+												params + ["delta", "dots"],
+												params + ["delta", "hets"],
+												params + ["delta", "homs"],
 												params + ["both", "different alts"]],
 									names = param_names + ["origin", "category"])
 	
 	# leave a zero at the end because percentages are calculated without different_alts value
 	perc_data = pd.Series(data=[sample_dots_perc, sample_hets_perc, sample_homs_perc,
-					ref_dots_perc, ref_hets_perc, ref_homs_perc, 0], index=idx, name="percentage")
+					ref_dots_perc, ref_hets_perc, ref_homs_perc,
+					delta_dots_perc, delta_hets_perc, delta_homs_perc, 0], index=idx, name="percentage")
 	abs_data = pd.Series([sample_dots_abs, sample_hets_abs, sample_homs_abs,
-					ref_dots_abs, ref_hets_abs, ref_homs_abs, different_alts], index=idx, name="absolute")
+					ref_dots_abs, ref_hets_abs, ref_homs_abs,
+					delta_dots_abs, delta_hets_abs, delta_homs_abs, different_alts], index=idx, name="absolute")
 	metadata_df = pd.concat((perc_data, abs_data), axis=1)
 
 	return metadata_df
@@ -249,7 +260,7 @@ def main():
 	with open("metadata.csv", "w") as f:
 		metadata.to_csv(f)
 
-	heatmap.savefig("heatmap.png")
+	transition_heatmap.savefig("heatmap.png")
 
 	with open("matrix.csv", "w") as f:
 		percentage_matrix.to_csv(f)
