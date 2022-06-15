@@ -2,3 +2,4 @@ work/**
 .nextflow*
 output/**
 input/**
+local_conf/**
