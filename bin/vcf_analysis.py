@@ -52,9 +52,9 @@ def parse_vcf(input_file):
 
 
 def remove_differing_alts(sample_df, ref_df):
+	"""remove rows in both dfs where alts are different between ref and sample"""
 	different_alts = 0
 
-	# remove rows where alts are different between ref and sample
 	for chrom, pos in sample_df.index:
 		if (chrom, pos) not in ref_df.index:
 			sample_df.drop(index=(chrom, pos), inplace=True)
@@ -67,7 +67,7 @@ def remove_differing_alts(sample_df, ref_df):
 
 
 def count_states(sample_df):
-	# count states row- and position-wise
+	"""count states row- and position-wise"""
 	sample_state_count = pd.DataFrame()
 	position_state_count = pd.DataFrame()
 	
@@ -90,8 +90,22 @@ def count_states(sample_df):
 	return sample_state_df, position_state_df
 
 
-def count_differences(sample_df, ref_df):
-	# build difference DataFrame and count variations
+def build_state_dfs(sample_df, ref_df):
+	"""collect data about the differences in calls between ref and sample"""
+	
+	# check if everything is the same
+	if sample_df.equals(ref_df):
+		print("Dataframes are equal!")
+		return
+
+	sample_state_dfs = count_states(sample_df)
+	ref_state_dfs = count_states(ref_df)
+	
+	return sample_state_dfs, ref_state_dfs
+
+
+def build_transition_df(sample_df, ref_df):
+	"""build difference DataFrame and count variations"""
 	comb_df = pd.DataFrame()
 	sample_count_df = pd.DataFrame()
 
@@ -111,26 +125,8 @@ def count_differences(sample_df, ref_df):
 	return total_count_df
 
 
-def quantify_differences(sample_df, ref_df):
-	"""collect data about the differences in calls between ref and sample"""
-	
-	# check if everything is the same
-	if sample_df.equals(ref_df):
-		print("Dataframes are equal!")
-		return
-
-	different_alts = remove_differing_alts(sample_df, ref_df)
-
-	sample_state_dfs = count_states(sample_df)
-	ref_state_dfs = count_states(ref_df)
-
-	total_count_df = count_differences(sample_df, ref_df)
-	
-	return total_count_df, sample_state_dfs, ref_state_dfs, different_alts
-
-
-def build_matrix(count_df):
-	"""build a difference matrix out of the result from quantify_differences"""
+def build_transition_matrices(count_df):
+	"""build a transition matrix out of the transition_df"""
 	ref_idx = set()
 	sample_idx = set()
 
@@ -155,8 +151,8 @@ def build_matrix(count_df):
 	return perc_df, abs_df
 
 
-def build_heatmap(matrix_df):
-	"""build a heatmap out of a difference matrix and save as heatmap.png"""
+def build_transition_heatmap(matrix_df):
+	"""build a heatmap out of a transition matrix and save as heatmap.png"""
 	matrix_df = matrix_df.astype("float32")
 	
 	fig = plt.figure(figsize=(10, 10))
@@ -226,13 +222,14 @@ def main():
 	args = parser.parse_args()
 
 	sample_df = parse_vcf(args.input_file)
-	ref_df = parse_vcf(args.comparison_file)	
+	ref_df = parse_vcf(args.comparison_file)
 
-	analysis_result, sample_state_dfs, ref_state_dfs, different_alts = quantify_differences(sample_df, ref_df)
-			
-	percentage_matrix, absolute_matrix = build_matrix(analysis_result)
-
-	heatmap = build_heatmap(percentage_matrix)
+	different_alts = remove_differing_alts(sample_df, ref_df)
+	sample_state_dfs, ref_state_dfs = build_state_dfs(sample_df, ref_df)
+	transition_count_df = build_transition_df(sample_df, ref_df)
+	
+	percentage_matrix, absolute_matrix = build_transition_matrices(transition_count_df)
+	transition_heatmap = build_transition_heatmap(percentage_matrix)
 
 	params, param_names = parse_param_string(args.param_string)
 	metadata = calc_metadata(percentage_matrix, absolute_matrix, different_alts, params, param_names)
