@@ -67,6 +67,7 @@ process vcfPandas {
   output:
   publishDir "${params.outdir}/$paramString", mode:"copy"
   path "metadata.csv", emit: metadata
+  path "confusion_vars.csv", emit: confusion_vars
   path "matrix.csv"
   path "heatmap.png"
   path "input_sample_counts.csv"

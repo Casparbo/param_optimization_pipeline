@@ -165,6 +165,35 @@ def build_transition_heatmap(matrix_df):
 	return fig
 
 
+def calc_confusion_variables(matrix_df):
+	"""calculate sensitivity, specificity and f1-score of the transition matrix, excluding '.'-calls"""
+	
+	# omit "." calls
+	no_points_matrix = matrix_df.drop(".", axis=0).drop(".", axis=1)
+
+	confusion_df = pd.DataFrame(index=no_points_matrix.index, columns=["sensitivity", "specificity", "f1-score"])
+	
+	# calc variables for each call
+	for idx in no_points_matrix.index:
+		tp = no_points_matrix.loc[idx].loc[idx]
+		p = no_points_matrix.loc[idx].sum()
+		sensitivity = tp/p
+
+		tn = no_points_matrix.drop(idx, axis=0).drop(idx, axis=1).to_numpy().sum()
+		n = no_points_matrix.drop(idx, axis=0).to_numpy().sum()
+		specificity = tn/n
+
+		fp = no_points_matrix[idx].drop(idx).sum()
+		precision = tp/(tp+fp)
+		
+		fn = no_points_matrix.loc[idx].drop(idx)
+		f1 = (2*precision*sensitivity)/(sensitivity+precision)
+
+		confusion_df.loc[idx] = [sensitivity, specificity, f1]
+
+	return confusion_df
+
+
 def parse_param_string(param_string):
 	"""parse the param string into a list of params and a list of names"""
 	words = param_string.split("_")
@@ -176,7 +205,7 @@ def parse_param_string(param_string):
 	
 
 def calc_metadata(percentage_df, absolute_df, different_alts, params, param_names):
-	"""calculate total number of dots, hetero calls and homo calls in sample and ref"""
+	"""calculate total number of dots, hetero calls and homo calls in sample and ref, as well as the difference between them (delta)"""
 	# sums of dots
 	sample_dots_perc = percentage_df["."].sum()
 	sample_dots_abs = absolute_df["."].sum()
@@ -245,6 +274,8 @@ def main():
 	params, param_names = parse_param_string(args.param_string)
 	metadata = calc_metadata(percentage_matrix, absolute_matrix, different_alts, params, param_names)
 
+	confusion_vars = calc_confusion_variables(absolute_matrix)
+
 	with open("input_sample_counts.csv", "w") as f:
 		sample_state_dfs[0].to_csv(f)
 
@@ -264,6 +295,9 @@ def main():
 
 	with open("matrix.csv", "w") as f:
 		percentage_matrix.to_csv(f)
+
+	with open("confusion_vars.csv", "w") as f:
+		confusion_vars.to_csv(f)
 
 
 if __name__ == '__main__':
