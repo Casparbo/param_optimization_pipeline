@@ -171,7 +171,9 @@ def calc_confusion_variables(matrix_df, params, param_names):
 	# omit "." calls
 	no_points_matrix = matrix_df.drop(".", axis=0).drop(".", axis=1)
 
-	confusion_df = pd.DataFrame(index=no_points_matrix.index, columns=param_names+["sensitivity", "specificity", "f1-score"])
+	confusion_df = pd.DataFrame(index=no_points_matrix.index.to_list() + ["average"],
+								columns=param_names+["sensitivity", "specificity", "f1-score"])
+	confusion_df.index.name = "call"
 	
 	# calc variables for each call
 	for idx in no_points_matrix.index:
@@ -190,6 +192,11 @@ def calc_confusion_variables(matrix_df, params, param_names):
 		f1 = (2*precision*sensitivity)/(sensitivity+precision)
 
 		confusion_df.loc[idx] = params + [sensitivity, specificity, f1]
+
+	sensitivity_avg = confusion_df["sensitivity"].sum()/3
+	specificity_avg = confusion_df["specificity"].sum()/3
+	f1_avg = confusion_df["f1-score"].sum()/3
+	confusion_df.loc["average"] = params + [sensitivity_avg, specificity_avg, f1_avg]
 
 	return confusion_df
 
