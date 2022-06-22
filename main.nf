@@ -67,7 +67,7 @@ process vcfPandas {
   output:
   publishDir "${params.outdir}/$paramString", mode:"copy"
   path "metadata.csv", emit: metadata
-  path "confusion_vars.csv", emit: confusion_vars
+  path "confusion_vars.csv", emit: confusionVars
   path "matrix.csv"
   path "heatmap.png"
   path "input_sample_counts.csv"
@@ -83,9 +83,13 @@ process vcfPandas {
 
 process metaAnalysis {
   debug true
-  conda "pandas"
+  conda "pandas matplotlib seaborn"
   input:
   path(metadataList, stageAs: "*metadata.csv")
+
+  output:
+  publishDir "${params.outdir}", mode: "copy"
+  path "metadata_*.png"
 
   script:
   """
@@ -115,5 +119,5 @@ workflow {
 
   vcfPandas(callVariants.out.combine(comparison))
 
-  metaAnalysis(vcfPandas.out.metadata.collect())
+  metaAnalysis(vcfPandas.out.confusionVars.collect())
 }
