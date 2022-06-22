@@ -119,6 +119,11 @@ def build_transition_df(sample_df, ref_df):
 		sample_count_df = pd.concat([sample_count_df, comb_df[column].value_counts(dropna=False)], axis=1)
 
 	total_counts = sample_count_df.sum(axis=1).sort_values(ascending=False).astype("int32")
+	# fill missing combinations, except for points
+	for t in ["0/0>0/0", "0/0>0/1", "0/0>1/1", "0/1>0/0", "0/1>0/1", "0/1>1/1", "1/1>0/0", "1/1>0/1", "1/1>1/1"]:
+		if t not in total_counts.index:
+			total_counts = pd.concat([total_counts, pd.Series({t: 0})])
+
 	norm_total_counts = total_counts.apply(lambda val: (val*100)/total_counts.sum())
 	total_count_df = pd.concat([total_counts, norm_total_counts], axis=1, keys=("absolute", "percentage"))
 
@@ -167,7 +172,6 @@ def build_transition_heatmap(matrix_df):
 
 def calc_confusion_variables(matrix_df, params, param_names):
 	"""calculate sensitivity, specificity and f1-score of the transition matrix, excluding '.'-calls"""
-	
 	# omit "." calls
 	no_points_matrix = matrix_df.drop(".", axis=0).drop(".", axis=1)
 
@@ -179,17 +183,17 @@ def calc_confusion_variables(matrix_df, params, param_names):
 	for idx in no_points_matrix.index:
 		tp = no_points_matrix.loc[idx].loc[idx]
 		p = no_points_matrix.loc[idx].sum()
-		sensitivity = tp/p
+		sensitivity = tp/p if p != 0 else 0
 
 		tn = no_points_matrix.drop(idx, axis=0).drop(idx, axis=1).to_numpy().sum()
 		n = no_points_matrix.drop(idx, axis=0).to_numpy().sum()
-		specificity = tn/n
+		specificity = tn/n if n!= 0 else 0
 
 		fp = no_points_matrix[idx].drop(idx).sum()
-		precision = tp/(tp+fp)
+		precision = tp/(tp+fp) if tp != 0 and fp != 0 else 0
 		
 		fn = no_points_matrix.loc[idx].drop(idx)
-		f1 = (2*precision*sensitivity)/(sensitivity+precision)
+		f1 = (2*precision*sensitivity)/(sensitivity+precision) if sensitivity != 0 and precision != 0 else 0
 
 		confusion_df.loc[idx] = params + [sensitivity, specificity, f1]
 
@@ -209,31 +213,43 @@ def parse_param_string(param_string):
 	param_names = [f"param{i}" for i in range(len(params))]
 
 	return params, param_names
+
+
+def sum_by_call(df, call, loc=False):
+	if loc and (call in df.index):
+		return df.loc[call].sum()
+	elif (not loc) and (call in df):
+		return df[call].sum()
+	else:
+		return 0
 	
 
 def calc_metadata(percentage_df, absolute_df, different_alts, params, param_names):
 	"""calculate total number of dots, hetero calls and homo calls in sample and ref, as well as the difference between them (delta)"""
 	# sums of dots
-	sample_dots_perc = percentage_df["."].sum()
-	sample_dots_abs = absolute_df["."].sum()
-	ref_dots_perc = percentage_df.loc["."].sum()
-	ref_dots_abs = absolute_df.loc["."].sum()
+	sample_dots_perc = sum_by_call(percentage_df, ".")
+	sample_dots_abs = sum_by_call(absolute_df, ".")
+	ref_dots_perc = sum_by_call(percentage_df, ".", True)
+	ref_dots_abs = sum_by_call(absolute_df, ".", True)
+
 	delta_dots_perc = ref_dots_perc - sample_dots_perc
 	delta_dots_abs = ref_dots_abs - sample_dots_abs
 
-	# sums of hets
-	sample_hets_perc = percentage_df["0/1"].sum()
-	sample_hets_abs = absolute_df["0/1"].sum()
-	ref_hets_perc = percentage_df.loc["0/1"].sum()
-	ref_hets_abs = absolute_df.loc["0/1"].sum()
+	sample_hets_perc = sum_by_call(percentage_df, "0/1")
+	sample_hets_abs = sum_by_call(absolute_df, "0/1")
+	ref_hets_perc = sum_by_call(percentage_df, "0/1", True)
+	ref_hets_abs = sum_by_call(absolute_df, "0/1", True)
+
 	delta_hets_perc = ref_hets_perc - sample_hets_perc
 	delta_hets_abs = ref_hets_abs - sample_hets_abs
 
 	# sums of homs
-	sample_homs_perc = percentage_df["1/1"].sum() + percentage_df["0/0"].sum()
-	sample_homs_abs = absolute_df["1/1"].sum() + absolute_df["0/0"].sum()
-	ref_homs_perc = percentage_df.loc["1/1"].sum() + percentage_df.loc["0/0"].sum()
-	ref_homs_abs = absolute_df.loc["1/1"].sum() + absolute_df.loc["0/0"].sum()
+	sample_homs_perc = sum_by_call(percentage_df, "1/1")+ sum_by_call(percentage_df, "0/0")
+	sample_homs_abs = sum_by_call(absolute_df, "1/1") + sum_by_call(absolute_df, "0/0")
+
+	ref_homs_perc = sum_by_call(percentage_df, "1/1", True) + sum_by_call(percentage_df, "0/0", True)
+	ref_homs_abs = sum_by_call(absolute_df, "1/1", True) + sum_by_call(absolute_df, "0/0", True)
+
 	delta_homs_perc = ref_homs_perc - sample_homs_perc
 	delta_homs_abs = ref_homs_abs - sample_homs_abs
 
