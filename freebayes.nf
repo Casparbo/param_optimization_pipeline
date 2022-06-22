@@ -108,6 +108,14 @@ workflow callVariants {
     noMnps = Channel.from(params.noMnps)
     noComplex = Channel.from(params.noComplex)
 
+    if(workflow.stubRun) {
+      minQsum = minQsum.first()
+      readMismatchLimit = readMismatchLimit.first()
+      minAlternateFraction = minAlternateFraction.first()
+      noMnps = noMnps.first()
+      noComplex = noComplex.first()
+    }
+
     freebayes(fasta, fastaIndex, targets, bamlist.collect(), bamindex.collect(),
     minQsum, readMismatchLimit, minAlternateFraction, noMnps, noComplex)
     sortVCFsamples(freebayes.out)
