@@ -8,6 +8,28 @@ def determine_version() {
   return version_nr
 }
 
+process splitBedFile {
+  input:
+  path bedFile
+
+  output:
+  path "split*.bed"
+
+  script:
+  """
+  lines=\$(wc -l < $bedFile)
+  for ((i=1;i<=lines;i+=50))
+  do
+    sed -n \$i,\$((\$i + 50))p $bedFile > split\$i.bed
+  done
+  """
+
+  stub:
+  """
+  sed -n 1,50p $bedFile > split0.bed
+  """
+}
+
 process freebayes {
   container = params.container
 
@@ -15,7 +37,7 @@ process freebayes {
   path fasta
   path fastaIndex
 
-  each targets
+  each path(bedFile)
 
   path bamfile
   path bamindex
@@ -58,7 +80,7 @@ process freebayes {
     }
   } \
   --fasta-reference $fasta \
-  --region $targets \
+  --target $bedFile \
   $bamfile > out.vcf
   """
 }
@@ -97,7 +119,7 @@ workflow callVariants {
 	take:
     fasta
     fastaIndex
-    targets
+    bedFile
     bamlist
     bamindex
 
@@ -115,8 +137,10 @@ workflow callVariants {
       noMnps = noMnps.first().mix(noMnps.last())
       noComplex = noComplex.first().mix(noComplex.last())
     }
+
+    splitBedFile(bedFile)
     
-    freebayes(fasta, fastaIndex, targets, bamlist.collect(), bamindex.collect(),
+    freebayes(fasta, fastaIndex, splitBedFile.out.flatMap(), bamlist.collect(), bamindex.collect(),
     minQsum, readMismatchLimit, minAlternateFraction, noMnps, noComplex)
     sortVCFsamples(freebayes.out)
     sortVCFsamples.out.collect()
