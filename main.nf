@@ -1,25 +1,5 @@
 #!/usr/bin/env nextflow
 
-def bedFileToRegionStrings(bedFile) {
-  regionList = Channel.empty()
-
-  if(workflow.stubRun) {
-    splt = bedFile.readLines()[0].split("\t")
-    regionString = "${splt[0]}:${splt[1]}..${splt[2]}"
-    regionList << regionString
-
-    return regionList
-  }
-
-  bedFile.eachLine {str ->
-    splt = str.split("\t")
-    regionString = "${splt[0]}:${splt[1]}..${splt[2]}"
-    regionList << regionString
-  }
-
-  return regionList
-}
-
 def createBamChannels(bamfile) {
   //check if input ist bamfile or bamlist, then add files to Channel
   bamlist = Channel.empty()
@@ -102,10 +82,7 @@ include {callVariants} from "./${params.workflow}"
 workflow {
   fasta = Channel.fromPath(params.fasta)
   fastaIndex = Channel.fromPath(params.fasta + ".fai")
-
-  bedFile = file(params.bedFile)
-
-  targets = bedFileToRegionStrings(bedFile)
+  bedFile = Channel.fromPath(params.bedFile)
 
   (bamlist, bamindex) = createBamChannels(file(params.bamfile))
 
@@ -115,7 +92,7 @@ workflow {
     comparison = txtToVcf(comparison)
   }
 
-  callVariants(fasta, fastaIndex, targets, bamlist, bamindex)
+  callVariants(fasta, fastaIndex, bedFile, bamlist, bamindex)
 
   vcfPandas(callVariants.out.combine(comparison))
 
