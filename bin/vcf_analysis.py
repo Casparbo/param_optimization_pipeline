@@ -17,6 +17,9 @@ def assemble_sort_df(chromosomes, positions, refs, alts, data_columns):
 	df.sort_values(by=["chromosome", "position"], inplace=True)
 	df.set_index(["chromosome", "position"], inplace=True)
 
+	#remove duplicates
+	df.drop_duplicates(inplace=True)
+
 	return df
 
 
@@ -56,7 +59,7 @@ def remove_differing_alts(sample_df, ref_df):
 	different_alts = 0
 
 	for chrom, pos in sample_df.index:
-		if (chrom, pos) not in ref_df.index:
+		if (chrom, pos) not in ref_df.index and (chrom, pos) in sample_df.index:
 			sample_df.drop(index=(chrom, pos), inplace=True)
 		elif sample_df.loc[chrom].loc[pos]["alt"] != ref_df.loc[chrom].loc[pos]["alt"]:
 			different_alts += 1
