@@ -66,9 +66,10 @@ def plot_f1_score(df):
 	"""create a scatterplot/swarmplot of the f1 score over params, depending on if they are numbers or not
 	also plot the two params with the biggest correlation in a 3d plot
 	"""
-	fig, axs = plt.subplots(2, 3, sharey=True, figsize=(20, 20))
+	# last three columns are sensitivity, specificity, and f1-score, all others are params
+	fig, axs = plt.subplots(len(df.columns[:-3])//3 + 1, 3, sharey=True, figsize=(20, 20))
 	param_corrs = {}
-	for i, column in enumerate(df.columns.to_list()[:6]):
+	for i, column in enumerate(df.columns.to_list()[:-3]):
 		ax = axs.flatten()[i]
 		plot_df = pd.concat([df[column], df["f1-score"]], axis=1)
 

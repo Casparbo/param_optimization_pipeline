@@ -106,12 +106,35 @@ process combineVCF {
   tuple val(minQsum), val(readMismatchLimit), val(minAlternateFraction), val(noMnps), val(noComplex), path(vcf, stageAs: "*.vcf")
 
   output:
-  publishDir "${params.outdir}/FREEBAYES_${determine_version()}_${minQsum}_${readMismatchLimit}_${minAlternateFraction}_${noMnps}_${noComplex}", mode:"copy"
-  tuple val("FREEBAYES_${determine_version()}_${minQsum}_${readMismatchLimit}_${minAlternateFraction}_${noMnps}_${noComplex}"), path("combined.vcf")
+  //publishDir "${params.outdir}/FREEBAYES_${determine_version()}_${minQsum}_${readMismatchLimit}_${minAlternateFraction}_${noMnps}_${noComplex}", mode:"copy"
+  tuple val(minQsum), val(readMismatchLimit), val(minAlternateFraction), val(noMnps), val(noComplex), path("combined.vcf")
 
   script:
   """
   vcf-concat $vcf > combined.vcf
+  """
+}
+
+process lgcPostProcessing {
+  conda "natsort biopython"
+  
+  input:
+  tuple val(minQsum), val(readMismatchLimit), val(minAlternateFraction), val(noMnps), val(noComplex), path(vcf)
+
+  each hetCorrectFilter
+  each minCoverageThresh
+
+  output:
+  publishDir "${params.outdir}/FREEBAYES_${determine_version()}_${minQsum}_${readMismatchLimit}_${minAlternateFraction}_${noMnps}_${noComplex}_${hetCorrectFilter}_${minCoverageThresh}", mode:"copy"
+  tuple val("FREEBAYES_${determine_version()}_${minQsum}_${readMismatchLimit}_${minAlternateFraction}_${noMnps}_${noComplex}_${hetCorrectFilter}_${minCoverageThresh}"), path("filtered.vcf")
+
+  script:
+  """
+  /illumina/software/Development/Pipelines-SA-dev_Docker-py3/VCF_postprocessing.py \
+    --input $vcf \
+    --output filtered.vcf \
+    --genotype-min-coverage-threshold $minCoverageThresh \
+    --genotype-min-count-het-call-threshold $hetCorrectFilter
   """
 }
 
@@ -130,12 +153,18 @@ workflow callVariants {
     noMnps = Channel.from(params.noMnps)
     noComplex = Channel.from(params.noComplex)
 
+    hetCorrectFilter = Channel.from(params.hetCorrectFilter)
+    minCoverageThresh = Channel.from(params.minCoverageThresh)
+
     if(workflow.stubRun) {
       minQsum = minQsum.first().mix(minQsum.last())
       readMismatchLimit = readMismatchLimit.first().mix(readMismatchLimit.last())
       minAlternateFraction = minAlternateFraction.first().mix(minAlternateFraction.last())
       noMnps = noMnps.first().mix(noMnps.last())
       noComplex = noComplex.first().mix(noComplex.last())
+
+      hetCorrectFilter = hetCorrectFilter.first().mix(hetCorrectFilter.last())
+      moinCoverageThresh = minCoverageThresh.first().mix(minCoverageThresh.last())
     }
 
     splitBedFile(bedFile)
@@ -146,7 +175,8 @@ workflow callVariants {
     sortVCFsamples.out.collect()
     //group by the first 5 elements of tuple (which are the parameters)
     combineVCF(sortVCFsamples.out.groupTuple(by: 0..4))
+    lgcPostProcessing(combineVCF.out, hetCorrectFilter, minCoverageThresh)
 
   emit:
-    combineVCF.out
+    lgcPostProcessing.out
 }
