@@ -38,7 +38,7 @@ process txtToVcf {
 }
 
 process vcfPandas {
-  debug true
+  //debug true
   conda "pandas seaborn"
   
   input:
@@ -69,7 +69,8 @@ process metaAnalysis {
 
   output:
   publishDir "${params.outdir}", mode: "copy"
-  path "metadata_*.png"
+  path "metadata.png"
+  path "metadata_3d.png"
 
   script:
   """
