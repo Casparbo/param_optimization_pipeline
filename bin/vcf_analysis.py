@@ -193,7 +193,7 @@ def calc_confusion_variables(matrix_df, params, param_names):
 		specificity = tn/n if n!= 0 else 0
 
 		fp = no_points_matrix[idx].drop(idx).sum()
-		precision = tp/(tp+fp) if tp != 0 and fp != 0 else 0
+		precision = tp/(tp+fp) if tp != 0 or fp != 0 else 0
 		
 		fn = no_points_matrix.loc[idx].drop(idx)
 		f1 = (2*precision*sensitivity)/(sensitivity+precision) if sensitivity != 0 and precision != 0 else 0
