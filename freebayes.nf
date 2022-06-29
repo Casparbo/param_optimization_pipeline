@@ -20,13 +20,13 @@ process splitBedFile {
   lines=\$(wc -l < $bedFile)
   for ((i=1;i<=lines;i+=50))
   do
-    sed -n \$i,\$((\$i + 50))p $bedFile > split\$i.bed
+    sed -n \$i,\$((\$i + 49))p $bedFile > split\$i.bed
   done
   """
 
   stub:
   """
-  sed -n 1,49p $bedFile > split0.bed
+  sed -n 1,50p $bedFile > split0.bed
   """
 }
 
