@@ -86,7 +86,7 @@ process freebayes {
 }
 
 process sortVCFsamples {
-  conda "natsort pandas"
+  conda "natsort"
 
   input:
   tuple val(minQsum), val(readMismatchLimit), val(minAlternateFraction), val(noMnps), val(noComplex), path(vcf)
@@ -125,8 +125,8 @@ process lgcPostProcessing {
   each minCoverageThresh
 
   output:
-  publishDir "${params.outdir}/FREEBAYES_${determine_version()}_${minQsum}_${readMismatchLimit}_${minAlternateFraction}_${noMnps}_${noComplex}_${hetCorrectFilter}_${minCoverageThresh}", mode:"copy"
-  tuple val("FREEBAYES_${determine_version()}_${minQsum}_${readMismatchLimit}_${minAlternateFraction}_${noMnps}_${noComplex}_${hetCorrectFilter}_${minCoverageThresh}"), path("filtered.vcf")
+  publishDir "${params.outdir}/FREEBAYES${determine_version()}_${minQsum}_${readMismatchLimit}_${minAlternateFraction}_${noMnps}_${noComplex}_${hetCorrectFilter}_${minCoverageThresh}", mode:"copy"
+  tuple val(minQsum), val(readMismatchLimit), val(minAlternateFraction), val(noMnps), val(noComplex), val(hetCorrectFilter), val(minCoverageThresh), path("filtered.vcf")
 
   script:
   """
