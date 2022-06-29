@@ -208,12 +208,12 @@ def calc_confusion_variables(matrix_df, params, param_names):
 	return confusion_df
 
 
-def parse_param_string(param_string):
+def parse_param_string(param_string, param_names):
 	"""parse the param string into a list of params and a list of names"""
 	words = param_string.split("_")
 
 	params = [w for w in words if not w.isupper()]
-	param_names = [f"param{i}" for i in range(len(params))]
+	param_names = param_names + [f"param{i}" for i in range(len(params) - len(param_names))]
 
 	return params, param_names
 
@@ -285,6 +285,7 @@ def main():
 	parser.add_argument("input_file")
 	parser.add_argument("comparison_file")
 	parser.add_argument("param_string")
+	parser.add_argument("param_names", nargs="*")
 	args = parser.parse_args()
 
 	sample_df = parse_vcf(args.input_file)
@@ -297,7 +298,7 @@ def main():
 	percentage_matrix, absolute_matrix = build_transition_matrices(transition_count_df)
 	transition_heatmap = build_transition_heatmap(percentage_matrix)
 
-	params, param_names = parse_param_string(args.param_string)
+	params, param_names = parse_param_string(args.param_string, args.param_names)
 	metadata = calc_metadata(percentage_matrix, absolute_matrix, different_alts, params, param_names)
 
 	confusion_vars = calc_confusion_variables(absolute_matrix, params, param_names)

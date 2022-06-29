@@ -126,15 +126,15 @@ process lgcPostProcessing {
 
   output:
   publishDir "${params.outdir}/FREEBAYES${determine_version()}_${minQsum}_${readMismatchLimit}_${minAlternateFraction}_${noMnps}_${noComplex}_${hetCorrectFilter}_${minCoverageThresh}", mode:"copy"
-  tuple val(minQsum), val(readMismatchLimit), val(minAlternateFraction), val(noMnps), val(noComplex), val(hetCorrectFilter), val(minCoverageThresh), path("filtered.vcf")
+  tuple val("FREEBAYES${determine_version()}_${minQsum}_${readMismatchLimit}_${minAlternateFraction}_${noMnps}_${noComplex}_${hetCorrectFilter}_${minCoverageThresh}"), path("filtered.vcf")
 
   script:
   """
   /illumina/software/Development/Pipelines-SA-dev_Docker-py3/VCF_postprocessing.py \
     --input $vcf \
     --output filtered.vcf \
-    --genotype-min-coverage-threshold $minCoverageThresh \
-    --genotype-min-count-het-call-threshold $hetCorrectFilter
+    --genotype-min-count-het-call-threshold $hetCorrectFilter \
+    --genotype-min-coverage-threshold $minCoverageThresh
   """
 }
 

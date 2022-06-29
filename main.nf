@@ -42,7 +42,7 @@ process vcfPandas {
   conda "pandas seaborn"
   
   input:
-  tuple val(paramString), path(vcf), path(comparison)
+  tuple val(paramString), path(vcf), path(comparison), val(paramNames)
 
   output:
   publishDir "${params.outdir}/$paramString", mode:"copy"
@@ -57,7 +57,7 @@ process vcfPandas {
 
   script:
   """
-  vcf_analysis.py $vcf $comparison $paramString
+  vcf_analysis.py $vcf $comparison $paramString $paramNames
   """
 }
 
@@ -93,9 +93,11 @@ workflow {
     comparison = txtToVcf(comparison)
   }
 
+  paramNames = Channel.from(params.paramNames)
+
   callVariants(fasta, fastaIndex, bedFile, bamlist, bamindex)
 
-  vcfPandas(callVariants.out.combine(comparison))
+  vcfPandas(callVariants.out.combine(comparison).combine(paramNames))
 
   metaAnalysis(vcfPandas.out.confusionVars.collect())
 }
