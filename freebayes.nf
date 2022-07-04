@@ -130,7 +130,7 @@ process lgcPostProcessing {
 
   script:
   """
-  /illumina/software/Development/Pipelines-SA-dev_Docker-py3/VCF_postprocessing.py \
+  VCF_postprocessing.py \
     --input $vcf \
     --output filtered.vcf \
     --genotype-min-count-het-call-threshold $hetCorrectFilter \
