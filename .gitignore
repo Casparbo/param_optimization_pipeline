@@ -1,5 +1,14 @@
+# work directory that is created while running
 work
+# logs and stuff
 .nextflow*
+# output directory that is created while running
 output
+# directory for input files, not necessary
 input
+# directory for configuation files containing local paths
 local_conf
+# report directory that is generated while running
+report
+# file that is sometimes generated while running in the background
+.nfs*

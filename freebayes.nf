@@ -164,7 +164,7 @@ workflow callVariants {
       noComplex = noComplex.first().mix(noComplex.last())
 
       hetCorrectFilter = hetCorrectFilter.first().mix(hetCorrectFilter.last())
-      moinCoverageThresh = minCoverageThresh.first().mix(minCoverageThresh.last())
+      minCoverageThresh = minCoverageThresh.first().mix(minCoverageThresh.last())
     }
 
     splitBedFile(bedFile)
