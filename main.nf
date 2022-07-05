@@ -64,6 +64,7 @@ process vcfPandas {
 process metaAnalysis {
   debug true
   conda "pandas matplotlib seaborn"
+  beforeScript "ulimit -Ss unlimited"
   input:
   path(metadataList, stageAs: "*metadata.csv")
 
