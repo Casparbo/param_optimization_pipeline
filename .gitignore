@@ -12,3 +12,5 @@ local_conf
 report
 # file that is sometimes generated while running in the background
 .nfs*
+# pycaches
+*__pycache__
