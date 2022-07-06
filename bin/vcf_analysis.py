@@ -209,9 +209,9 @@ def calc_confusion_variables(matrix_df, params, param_names):
 
 		confusion_df.loc[idx] = params + [sensitivity, specificity, f1]
 
-	sensitivity_avg = confusion_df["sensitivity"].sum()/3
-	specificity_avg = confusion_df["specificity"].sum()/3
-	f1_avg = confusion_df["f1-score"].sum()/3
+	sensitivity_avg = confusion_df["sensitivity"].sum()/len(confusion_df["sensitivity"])
+	specificity_avg = confusion_df["specificity"].sum()/len(confusion_df["specificity"])
+	f1_avg = confusion_df["f1-score"].sum()/len(confusion_df["f1-score"])
 	confusion_df.loc["average"] = params + [sensitivity_avg, specificity_avg, f1_avg]
 
 	return confusion_df
