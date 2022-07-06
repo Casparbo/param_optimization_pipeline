@@ -1,13 +1,5 @@
 #!/usr/bin/env nextflow
 
-def determine_version() {
-  name = params.container.split("/").last()
-  name_no_appendix = name.split("--").first()
-  version_nr = name_no_appendix.split(":").last()
-
-  return version_nr
-}
-
 process splitBedFile {
   input:
   path bedFile
@@ -125,8 +117,8 @@ process lgcPostProcessing {
   each minCoverageThresh
 
   output:
-  publishDir "${params.outdir}/FREEBAYES${determine_version()}_${minQsum}_${readMismatchLimit}_${minAlternateFraction}_${noMnps}_${noComplex}_${hetCorrectFilter}_${minCoverageThresh}", mode:"copy"
-  tuple val("FREEBAYES${determine_version()}_${minQsum}_${readMismatchLimit}_${minAlternateFraction}_${noMnps}_${noComplex}_${hetCorrectFilter}_${minCoverageThresh}"), path("filtered.vcf")
+  publishDir "${params.outdir}/${minQsum}_${readMismatchLimit}_${minAlternateFraction}_${noMnps}_${noComplex}_${hetCorrectFilter}_${minCoverageThresh}", mode:"copy"
+  tuple val("${minQsum}_${readMismatchLimit}_${minAlternateFraction}_${noMnps}_${noComplex}_${hetCorrectFilter}_${minCoverageThresh}"), path("filtered.vcf")
 
   script:
   """

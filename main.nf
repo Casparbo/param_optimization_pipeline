@@ -45,7 +45,9 @@ process vcfPandas {
   tuple val(paramString), path(vcf), path(comparison), val(paramNames)
 
   output:
-  publishDir "${params.outdir}/$paramString", mode:"copy"
+  if(workflow.stubRun) {
+    publishDir "${params.outdir}/$paramString", mode:"copy"
+  }
   path "metadata.csv", emit: metadata
   path "confusion_vars.csv", emit: confusionVars
   path "matrix.csv"
