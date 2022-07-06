@@ -25,6 +25,8 @@ def assemble_sort_df(chromosomes, positions, refs, alts, data_columns):
 
 def vcf_get_data(data):
 	"""get the genome type out of the vcf-data-column"""
+	if type(data) is not str:
+		return data
 	elems = data.split(":")
 
 	return elems[0]
@@ -122,8 +124,15 @@ def build_transition_df(sample_df, ref_df):
 		sample_count_df = pd.concat([sample_count_df, comb_df[column].value_counts(dropna=False)], axis=1)
 
 	total_counts = sample_count_df.sum(axis=1).sort_values(ascending=False).astype("int32")
+	
 	# fill missing combinations, except for points
-	for t in ["0/0>0/0", "0/0>0/1", "0/0>1/1", "0/1>0/0", "0/1>0/1", "0/1>1/1", "1/1>0/0", "1/1>0/1", "1/1>1/1"]:
+	calls = set()
+	for idx in total_counts.index:
+		ref, samp = idx.split(">")
+		calls.add(ref)
+		calls.add(samp)
+	
+	for t in [f"{r}>{s}" for r in calls for s in calls]:
 		if t not in total_counts.index:
 			total_counts = pd.concat([total_counts, pd.Series({t: 0})])
 
@@ -294,6 +303,7 @@ def main():
 	different_alts = remove_differing_alts(sample_df, ref_df)
 	sample_state_dfs, ref_state_dfs = build_state_dfs(sample_df, ref_df)
 	transition_count_df = build_transition_df(sample_df, ref_df)
+	print(transition_count_df)
 	
 	percentage_matrix, absolute_matrix = build_transition_matrices(transition_count_df)
 	transition_heatmap = build_transition_heatmap(percentage_matrix)
