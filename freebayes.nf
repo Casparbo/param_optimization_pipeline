@@ -117,7 +117,7 @@ process lgcPostProcessing {
   each minCoverageThresh
 
   output:
-  publishDir "${params.outdir}/${minQsum}_${readMismatchLimit}_${minAlternateFraction}_${noMnps}_${noComplex}_${hetCorrectFilter}_${minCoverageThresh}", mode:"copy"
+  publishDir "${params.outdir}/${minQsum}_${readMismatchLimit}_${minAlternateFraction}_${noMnps}_${noComplex}_${hetCorrectFilter}_${minCoverageThresh}", mode:"copy", enabled: workflow.stubRun
   tuple val("${minQsum}_${readMismatchLimit}_${minAlternateFraction}_${noMnps}_${noComplex}_${hetCorrectFilter}_${minCoverageThresh}"), path("filtered.vcf")
 
   script:
