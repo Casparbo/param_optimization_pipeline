@@ -1,15 +1,26 @@
 # Pipeline for parameteroptimization in high-throughput-data
-## Config
-Two config files need to be imported: One for the datasets and one for the variant caller.
+## Requirements
+- Nextflow
+- Apptainer or Singularity
+- Conda
 
-### Datasets
+## Quickstart
+1. Install Requirements
+2. Clone Repo
+3. Run ```nextflow run main.nf -stub```
+
+## Output
+A directory _output_ will be created. It contains the results.
+A directory _report_ will be created. It contains data regarding the ressource usage of the run.
+
+## Adding custom datasets
 Profiles may be used. A dataset defines the following params:
 - fasta - fasta-file
 - bedFile - bed-file
 - bamFile - bam-file or file containing a list of bam-files
 - comparison - reference-vcf
 
-### Variant caller
+## Adding a custom variant caller
 The variant caller must include a workflow _callVariants_, which will be imported by the main workflow.
 The variant caller config defines the following params:
 - outdir - the output directory for final results
