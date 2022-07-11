@@ -49,6 +49,7 @@ process vcfPandas {
   
   path "metadata.csv", emit: metadata
   path "confusion_vars.csv", emit: confusionVars
+  path "confusion_vars_missing.csv", emit: confusionVarsMissing
   path "matrix.csv"
   path "heatmap.png"
   path "input_sample_counts.csv"
@@ -62,21 +63,37 @@ process vcfPandas {
   """
 }
 
+process combineAnalyses {
+  conda "pandas"
+  input:
+  path(fileList, stageAs: "*.csv")
+
+  output:
+  path "combined.vcf"
+
+  script:
+  """
+  combine_analyses.py $fileList
+  """
+}
+
 process metaAnalysis {
   debug true
   conda "pandas matplotlib seaborn"
   beforeScript "ulimit -Ss unlimited"
   input:
-  path(metadataList, stageAs: "*metadata.csv")
+  path(combinedConfusionVars, stageAs: "*confusionVars.csv")
 
   output:
   publishDir "${params.outdir}", mode: "copy"
   path "metadata.png"
   path "metadata_3d.png"
+  path "metadata_missing.png"
+  path "metadata_3d_missing.png"
 
   script:
   """
-  meta_analysis.py $metadataList
+  meta_analysis.py $combinedConfusionVars
   """
 }
 
@@ -101,5 +118,9 @@ workflow {
 
   vcfPandas(callVariants.out.combine(comparison).combine(paramNames))
 
-  metaAnalysis(vcfPandas.out.confusionVars.collect())
+  confusionVarsFiles = vcfPandas.out.confusionVars.collect().mix(vcfPandas.out.confusionVarsMissing.collect())
+
+  combineAnalyses(confusionVarsFiles)
+
+  metaAnalysis(combineAnalyses.out.collect())
 }

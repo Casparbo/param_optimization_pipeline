@@ -8,33 +8,6 @@ import seaborn as sns
 import numpy as np
 
 
-def read_data_frames(filelist):
-	"""read metadata files and create DataFrames to store them in, return them as a list"""
-	df_list = []
-
-	for f in filelist:
-		df = pd.read_csv(f)
-		# the last two columns are percentage and absolute, so they dont belong in the index, everything else does
-		df.set_index(df.columns.to_list()[0], inplace=True)
-		df_list.append(df)
-
-	return df_list
-
-
-def combineFrames(df_list):
-	"""combine list of metadata DataFrames"""
-	combined_df = pd.DataFrame()
-
-	if len(df_list) == 1:
-		return df_list[0].xs("average").to_frame().swapaxes("index", "columns")
-
-	# combine everything into one dataframe
-	for df in df_list:
-		combined_df = pd.concat([combined_df, df])
-
-	return combined_df.xs("average")
-
-
 def create_3d_param_plot(df, params):
 	fig = plt.figure(figsize=(20, 20))
 	ax = fig.add_subplot(projection="3d")
@@ -93,15 +66,21 @@ def plot_f1_score(df):
 
 def main():
 	parser = argparse.ArgumentParser()
-	parser.add_argument("filelist", nargs="*")
+	parser.add_argument("confusion_vars")
+	parser.add_argument("confusion_vars_missing")
 	args = parser.parse_args()
 
-	df_list = read_data_frames(args.filelist)
-	average_df = combineFrames(df_list)
-	figs, fig_3d = plot_f1_score(average_df)
+	confusion_vars = pd.read_csv(args.confusion_vars)
+	confusion_vars_missing = pd.read_csv(args.confusion_vars_missing)
+
+	figs, fig_3d = plot_f1_score(confusion_vars)
+	figs_missing, fig_3d_missing = plot_f1_score(confusion_vars_missing)
 
 	figs.savefig(f"metadata.png")
 	fig_3d.savefig("metadata_3d.png")
+
+	figs_missing.savefig("metadata_missing.png")
+	fig_3d_missing.savefig("metadata_3d_missing.png")
 
 
 if __name__ == '__main__':

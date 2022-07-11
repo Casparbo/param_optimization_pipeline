@@ -4,16 +4,16 @@
 - Apptainer or Singularity
 - Conda
 
-## Quickstart
+## Quick set-up
 1. Install Requirements
 2. Clone Repo
-3. Run ```nextflow run main.nf -stub```
+3. Run ```nextflow run main.nf -stub```, all necessary containers and environments will be downloaded
 
 ## Output
 A directory _output_ will be created. It contains the results.
 A directory _report_ will be created. It contains data regarding the ressource usage of the run.
 
-## Adding custom datasets
+## Adding custom dataset
 Profiles may be used. A dataset defines the following params:
 - fasta - fasta-file
 - bedFile - bed-file

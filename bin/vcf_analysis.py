@@ -182,10 +182,13 @@ def build_transition_heatmap(matrix_df):
 	return fig
 
 
-def calc_confusion_variables(matrix_df, params, param_names):
+def calc_confusion_variables(matrix_df, params, param_names, include_missing=False):
 	"""calculate sensitivity, specificity and f1-score of the transition matrix, excluding '.'-calls"""
 	# omit "." calls
-	no_points_matrix = matrix_df.drop(".", axis=0).drop(".", axis=1)
+	if include_missing:
+		no_points_matrix = matrix_df
+	else:
+		no_points_matrix = matrix_df.drop(".", axis=0).drop(".", axis=1)
 
 	confusion_df = pd.DataFrame(index=no_points_matrix.index.to_list() + ["average"],
 								columns=param_names+["sensitivity", "specificity", "f1-score"])
@@ -313,6 +316,7 @@ def main():
 	metadata = calc_metadata(percentage_matrix, absolute_matrix, different_alts, params, param_names)
 
 	confusion_vars = calc_confusion_variables(absolute_matrix, params, param_names)
+	confusion_vars_missing = calc_confusion_variables(absolute_matrix, params, param_names, include_missing=True)
 
 	with open("input_sample_counts.csv", "w") as f:
 		sample_state_dfs[0].to_csv(f)
@@ -336,6 +340,9 @@ def main():
 
 	with open("confusion_vars.csv", "w") as f:
 		confusion_vars.to_csv(f)
+
+	with open("confusion_vars_missing.csv", "w") as f:
+		confusion_vars_missing.to_csv(f)
 
 
 if __name__ == '__main__':
