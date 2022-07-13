@@ -307,7 +307,6 @@ def main():
 	different_alts = remove_differing_alts(sample_df, ref_df)
 	sample_state_dfs, ref_state_dfs = build_state_dfs(sample_df, ref_df)
 	transition_count_df = build_transition_df(sample_df, ref_df)
-	print(transition_count_df)
 	
 	percentage_matrix, absolute_matrix = build_transition_matrices(transition_count_df)
 	transition_heatmap = build_transition_heatmap(percentage_matrix)
