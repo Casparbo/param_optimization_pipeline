@@ -70,8 +70,8 @@ def main():
 	parser.add_argument("confusion_vars_missing")
 	args = parser.parse_args()
 
-	confusion_vars = pd.read_csv(args.confusion_vars)
-	confusion_vars_missing = pd.read_csv(args.confusion_vars_missing)
+	confusion_vars = pd.read_csv(args.confusion_vars, index_col=0)
+	confusion_vars_missing = pd.read_csv(args.confusion_vars_missing, index_col=0)
 
 	figs, fig_3d = plot_f1_score(confusion_vars)
 	figs_missing, fig_3d_missing = plot_f1_score(confusion_vars_missing)
