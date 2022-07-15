@@ -4,6 +4,7 @@ import argparse
 
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.backends.backend_pdf as pdf
 import seaborn as sns
 import numpy as np
 
@@ -27,20 +28,21 @@ def create_3d_param_plot(df, params):
 	ax.set_zlim((0, 1))
 
 	# set axes labels in case one of them was categorical
-	ax.axes.set_xticklabels(df[params[0]])
 	ax.axes.set_xticks(numeric_params[0])
-	ax.axes.set_yticklabels(df[params[1]])
+	ax.axes.set_xticklabels(df[params[0]])
 	ax.axes.set_yticks(numeric_params[1])
+	ax.axes.set_yticklabels(df[params[1]])
 
 	return fig
 
 
-def plot_f1_score(df):
+def plot_f1_score(df, title):
 	"""create a scatterplot/swarmplot of the f1 score over params, depending on if they are numbers or not
 	also plot the two params with the biggest correlation in a 3d plot
 	"""
 	# last three columns are sensitivity, specificity, and f1-score, all others are params
 	fig, axs = plt.subplots(len(df.columns[:-3])//3 + 1, 3, sharey=True, figsize=(20, 20))
+	fig.suptitle(title, fontsize=20)
 	param_corrs = {}
 	for i, column in enumerate(df.columns.to_list()[:-3]):
 		ax = axs.flatten()[i]
@@ -60,6 +62,7 @@ def plot_f1_score(df):
 	largest = dict(sorted(param_corrs.items()))
 
 	fig_3d = create_3d_param_plot(df, list(largest.values())[-2:])
+	fig_3d.suptitle(title, fontsize=20)
 
 	return fig, fig_3d
 
@@ -73,14 +76,16 @@ def main():
 	confusion_vars = pd.read_csv(args.confusion_vars, index_col=0)
 	confusion_vars_missing = pd.read_csv(args.confusion_vars_missing, index_col=0)
 
-	figs, fig_3d = plot_f1_score(confusion_vars)
-	figs_missing, fig_3d_missing = plot_f1_score(confusion_vars_missing)
+	figs, fig_3d = plot_f1_score(confusion_vars, "F1-score over params, excluding missing data")
+	figs_missing, fig_3d_missing = plot_f1_score(confusion_vars_missing, "F1-score over params, including missing data")
 
-	figs.savefig(f"metadata.png")
-	fig_3d.savefig("metadata_3d.png")
+	with pdf.PdfPages("metadata.pdf") as fig_file:
+		fig_file.savefig(figs)
+		fig_file.savefig(figs_missing)
 
-	figs_missing.savefig("metadata_missing.png")
-	fig_3d_missing.savefig("metadata_3d_missing.png")
+	with pdf.PdfPages("metadata_3d.pdf") as fig_3d_file:
+		fig_3d_file.savefig(fig_3d)
+		fig_3d_file.savefig(fig_3d_missing)
 
 
 if __name__ == '__main__':

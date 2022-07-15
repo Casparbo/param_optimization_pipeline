@@ -67,10 +67,10 @@ process combineAnalyses {
   conda "pandas"
   beforeScript "ulimit -Ss unlimited"
   input:
-  path(fileList, stageAs: "*.csv")
+  tuple path(fileList, stageAs: "*.csv"), val(idx)
 
   output:
-  path "combined.vcf"
+  tuple path("combined.vcf"), val(idx)
 
   script:
   """
@@ -86,10 +86,8 @@ process metaAnalysis {
 
   output:
   publishDir "${params.outdir}", mode: "copy"
-  path "metadata.png"
-  path "metadata_3d.png"
-  path "metadata_missing.png"
-  path "metadata_3d_missing.png"
+  path "metadata.pdf"
+  path "metadata_3d.pdf"
 
   script:
   """
@@ -118,9 +116,16 @@ workflow {
 
   vcfPandas(callVariants.out.combine(comparison).combine(paramNames))
 
-  confusionVarsFiles = vcfPandas.out.confusionVars.collect().mix(vcfPandas.out.confusionVarsMissing.collect())
+  // add number so that we can later tell which one is with and without missing data (0: without, 1: with)
+  confusionVarsFiles = vcfPandas.out.confusionVars.collect().concat(Channel.from(0)).toList()
+  confusionVarsMissingFiles = vcfPandas.out.confusionVarsMissing.collect().concat(Channel.from(1)).toList()
+  confusionVarsFilesBoth = confusionVarsFiles.concat(confusionVarsMissingFiles)
 
-  combineAnalyses(confusionVarsFiles)
+  combineAnalyses(confusionVarsFilesBoth)
 
-  metaAnalysis(combineAnalyses.out.collect())
+  // fork and recombine the two paths so that the one without missing data comes first
+  bothCombined = combineAnalyses.out.branch{no_missing: it[1] == 0; missing: it[1] == 1}
+  bothPaths = bothCombined.no_missing.concat(bothCombined.missing).collect{it[0]}
+
+  metaAnalysis(bothPaths)
 }
