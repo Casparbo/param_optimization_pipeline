@@ -65,6 +65,7 @@ process vcfPandas {
 
 process combineAnalyses {
   conda "pandas"
+  beforeScript "ulimit -Ss unlimited"
   input:
   path(fileList, stageAs: "*.csv")
 
@@ -80,7 +81,6 @@ process combineAnalyses {
 process metaAnalysis {
   debug true
   conda "pandas matplotlib seaborn"
-  beforeScript "ulimit -Ss unlimited"
   input:
   path(combinedConfusionVars, stageAs: "*confusionVars.csv")
 
