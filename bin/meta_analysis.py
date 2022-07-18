@@ -79,13 +79,11 @@ def main():
 	figs, fig_3d = plot_f1_score(confusion_vars, "F1-score over params, excluding missing data")
 	figs_missing, fig_3d_missing = plot_f1_score(confusion_vars_missing, "F1-score over params, including missing data")
 
-	with pdf.PdfPages("metadata.pdf") as fig_file:
-		fig_file.savefig(figs)
-		fig_file.savefig(figs_missing)
+	figs.savefig("metadata_no_missing.png")
+	fig_3d.savefig("metadata_3d_no_missing.png")
 
-	with pdf.PdfPages("metadata_3d.pdf") as fig_3d_file:
-		fig_3d_file.savefig(fig_3d)
-		fig_3d_file.savefig(fig_3d_missing)
+	figs_missing.savefig("metadata_missing.png")
+	fig_3d_missing.savefig("metadata_3d_missing.png")
 
 
 if __name__ == '__main__':
