@@ -9,12 +9,12 @@ def createBamChannels(bamfile) {
   
   if(fileExtension.equals("bam")) {
     bamlist << file(bamfile)
-    bamindex << file(bamfile + ".csi")
+    bamindex << file(bamfile + ".bai")
   } else {
     bamfile.eachLine {line ->
       if (line) {
         bamlist << file(line)
-        bamindex << file(line + ".csi")
+        bamindex << file(line + ".bai")
       }
     }
   }
@@ -86,8 +86,10 @@ process metaAnalysis {
 
   output:
   publishDir "${params.outdir}", mode: "copy"
-  path "metadata.pdf"
-  path "metadata_3d.pdf"
+  path "metadata_no_missing.png"
+  path "metadata_missing.png"
+  path "metadata_3d_no_missing.png"
+  path "metadata_3d_missing.png"
 
   script:
   """
