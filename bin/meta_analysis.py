@@ -11,6 +11,7 @@ import numpy as np
 
 
 def per_sample_stats(df_list, n):
+	"""find the top n parameter combinations for each df and then return those combinations that occur in all samples"""
 	df_list = [df.copy() for df in df_list]
 	top_list = []
 	for df in df_list:
@@ -27,6 +28,7 @@ def per_sample_stats(df_list, n):
 
 
 def concat_dfs(df_list):
+	"""concatenate dfs into one, removing the sample name"""
 	for df in df_list:
 		df.columns = df.columns.droplevel(0)
 
@@ -36,6 +38,7 @@ def concat_dfs(df_list):
 
 
 def create_3d_param_plot(df, params):
+	"""create a 3d plot of the f1-score over the two params"""
 	fig = plt.figure(figsize=(20, 20))
 	ax = fig.add_subplot(projection="3d")
 	numeric_params = []

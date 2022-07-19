@@ -292,6 +292,7 @@ def calc_metadata(percentage_df, absolute_df, different_alts, params, param_name
 
 
 def add_sample_name_to_columns(sample_names, dfs):
+	"""make columns into a multiindex to preserve the sample name"""
 	for sn, df in zip(sample_names, dfs):
 		mux = pd.MultiIndex.from_tuples([(sn, col) for col in df.columns])
 		df.columns = mux
