@@ -1,12 +1,38 @@
 #!/usr/bin/env python3
 
 import argparse
+import functools
 
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.backends.backend_pdf as pdf
 import seaborn as sns
 import numpy as np
+
+
+def per_sample_stats(df_list, n):
+	df_list = [df.copy() for df in df_list]
+	top_list = []
+	for df in df_list:
+		df.columns = df.columns.droplevel(0)
+		df.sort_values("f1-score", ascending=False, inplace=True)
+
+		# get only params of top n f1-scores
+		top = df.head(n).iloc[:, :-3].reset_index(drop=True)
+		top_list.append(top)
+
+	merged = functools.reduce(lambda left, right: left.merge(right, how="inner"), top_list)
+	
+	return merged
+
+
+def concat_dfs(df_list):
+	for df in df_list:
+		df.columns = df.columns.droplevel(0)
+
+	combined = functools.reduce(lambda left, right: pd.concat([left, right]), df_list)
+	
+	return combined
 
 
 def create_3d_param_plot(df, params):
@@ -69,15 +95,28 @@ def plot_f1_score(df, title):
 
 def main():
 	parser = argparse.ArgumentParser()
-	parser.add_argument("confusion_vars")
-	parser.add_argument("confusion_vars_missing")
+	parser.add_argument("--confusion_vars", nargs="+")
+	parser.add_argument("--confusion_vars_missing", nargs="+")
+	parser.add_argument("--top_params_thresh", type=int)
 	args = parser.parse_args()
 
-	confusion_vars = pd.read_csv(args.confusion_vars, index_col=0)
-	confusion_vars_missing = pd.read_csv(args.confusion_vars_missing, index_col=0)
+	confusion_vars_list = [pd.read_csv(file, index_col=0, header=[0, 1]) for file in args.confusion_vars]
+	confusion_vars_missing_list = [pd.read_csv(file, index_col=0, header=[0, 1]) for file in args.confusion_vars]
+
+	top_params = per_sample_stats(confusion_vars_list, args.top_params_thresh)
+	top_params_missing = per_sample_stats(confusion_vars_missing_list, args.top_params_thresh)
+
+	confusion_vars = concat_dfs(confusion_vars_list)
+	confusion_vars_missing = concat_dfs(confusion_vars_missing_list)
 
 	figs, fig_3d = plot_f1_score(confusion_vars, "F1-score over params, excluding missing data")
 	figs_missing, fig_3d_missing = plot_f1_score(confusion_vars_missing, "F1-score over params, including missing data")
+
+	with open("top_params_no_missing.csv", "w") as f:
+		top_params.to_csv(f)
+
+	with open("top_params_missing.csv", "w") as f:
+		top_params_missing.to_csv(f)
 
 	figs.savefig("metadata_no_missing.png")
 	fig_3d.savefig("metadata_3d_no_missing.png")

@@ -47,15 +47,11 @@ process vcfPandas {
   output:
   publishDir "${params.outdir}/$paramString", mode:"copy", enabled: workflow.stubRun
   
-  path "metadata.csv", emit: metadata
-  path "confusion_vars.csv", emit: confusionVars
-  path "confusion_vars_missing.csv", emit: confusionVarsMissing
-  path "matrix.csv"
-  path "heatmap.png"
-  path "input_sample_counts.csv"
-  path "sample_position_counts.csv"
-  path "ref_sample_counts.csv"
-  path "ref_position_counts.csv"
+  path "*_confusion_vars.csv", emit: confusionVars
+  path "*_confusion_vars_missing.csv", emit: confusionVarsMissing
+  path "*_heatmap.png"
+  // also publish all other generated csv
+  path "*.csv"
 
   script:
   """
@@ -64,13 +60,14 @@ process vcfPandas {
 }
 
 process combineAnalyses {
+  debug true
   conda "pandas"
   beforeScript "ulimit -Ss unlimited"
   input:
   tuple path(fileList, stageAs: "*.csv"), val(idx)
 
-  output:
-  tuple path("combined.vcf"), val(idx)
+  output:  
+  tuple path("*_combined.csv"), val(idx)
 
   script:
   """
@@ -82,18 +79,16 @@ process metaAnalysis {
   debug true
   conda "pandas matplotlib seaborn"
   input:
-  path(combinedConfusionVars, stageAs: "*confusionVars.csv")
+  tuple path(confusionVarsNoMissing, stageAs: "*noMissing.csv"), path(confusionVarsMissing, stageAs: "*missing.csv")
 
   output:
   publishDir "${params.outdir}", mode: "copy"
-  path "metadata_no_missing.png"
-  path "metadata_missing.png"
-  path "metadata_3d_no_missing.png"
-  path "metadata_3d_missing.png"
+  path "metadata_*.png"
+  path "top_params_*.csv"
 
   script:
   """
-  meta_analysis.py $combinedConfusionVars
+  meta_analysis.py --confusion_vars $confusionVarsNoMissing --confusion_vars_missing $confusionVarsMissing --top_params_thresh 10
   """
 }
 
@@ -117,16 +112,16 @@ workflow {
   callVariants(fasta, fastaIndex, bedFile, bamlist, bamindex)
 
   vcfPandas(callVariants.out.combine(comparison).combine(paramNames))
-
   // add number so that we can later tell which one is with and without missing data (0: without, 1: with)
   confusionVarsFiles = vcfPandas.out.confusionVars.collect().concat(Channel.from(0)).toList()
   confusionVarsMissingFiles = vcfPandas.out.confusionVarsMissing.collect().concat(Channel.from(1)).toList()
   confusionVarsFilesBoth = confusionVarsFiles.concat(confusionVarsMissingFiles)
 
   combineAnalyses(confusionVarsFilesBoth)
+  //TODO: groupTuple, figure out how to bring this all together in meta_analysis.py!!!
 
-  // fork and recombine the two paths so that the one without missing data comes first
-  bothCombined = combineAnalyses.out.branch{no_missing: it[1] == 0; missing: it[1] == 1}
+  // group by added number (0/1), then fork and recombine the two paths so that the one without missing data comes first
+  bothCombined = combineAnalyses.out.groupTuple(by: 1).branch{no_missing: it[1] == 0; missing: it[1] == 1}
   bothPaths = bothCombined.no_missing.concat(bothCombined.missing).collect{it[0]}
 
   metaAnalysis(bothPaths)

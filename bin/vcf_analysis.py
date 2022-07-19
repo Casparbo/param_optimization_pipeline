@@ -4,6 +4,7 @@ import argparse
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 def assemble_sort_df(chromosomes, positions, refs, alts, data_columns):
@@ -123,7 +124,7 @@ def build_transition_df(sample_df, ref_df):
 	for column in comb_df.columns:
 		sample_count_df = pd.concat([sample_count_df, comb_df[column].value_counts(dropna=False)], axis=1)
 
-	total_counts = sample_count_df.sum(axis=1).sort_values(ascending=False).astype("int32")
+	total_counts = sample_count_df#.sum(axis=1).sort_values(ascending=False).astype("int32")
 	
 	# fill missing combinations, except for points
 	calls = set()
@@ -134,12 +135,14 @@ def build_transition_df(sample_df, ref_df):
 	
 	for t in [f"{r}>{s}" for r in calls for s in calls]:
 		if t not in total_counts.index:
-			total_counts = pd.concat([total_counts, pd.Series({t: 0})])
+			fill_df = pd.DataFrame(index=[t], data={col: 0 for col in total_counts.columns})
+			total_counts = pd.concat([total_counts, fill_df])
 
-	norm_total_counts = total_counts.apply(lambda val: (val*100)/total_counts.sum())
-	total_count_df = pd.concat([total_counts, norm_total_counts], axis=1, keys=("absolute", "percentage"))
+	total_counts.fillna(0, inplace=True)
 
-	return total_count_df
+	percentage_total_counts = total_counts.apply(lambda col:  col.apply(lambda val: (val*100)/col.sum()))
+
+	return total_counts, percentage_total_counts
 
 
 def build_transition_matrices(count_df):
@@ -152,20 +155,15 @@ def build_transition_matrices(count_df):
 		ref_idx.add(a)
 		sample_idx.add(b)
 
-	perc_df = pd.DataFrame(columns=sorted(sample_idx), index=sorted(ref_idx))
-	abs_df = pd.DataFrame(columns=sorted(sample_idx), index=sorted(ref_idx))
+	# each column (=sample) gets its own confusion matrix
+	matrices = [pd.DataFrame(columns=sorted(sample_idx), index=sorted(ref_idx)) for col in count_df.columns]
 
-	# percentage matrix
-	for idx, elem in zip(count_df.index, count_df["percentage"]):
-		a, b = idx.split(">")
-		perc_df[b][a] = elem
+	for i, col in enumerate(count_df.columns):
+		for idx in count_df.index:
+			a, b = idx.split(">")
+			matrices[i][b][a] = count_df[col][idx]
 
-	# absolute value matrix
-	for idx, elem in zip(count_df.index, count_df["absolute"]):
-		a, b = idx.split(">")
-		abs_df[b][a] = elem
-
-	return perc_df, abs_df
+	return matrices
 
 
 def build_transition_heatmap(matrix_df):
@@ -248,16 +246,16 @@ def calc_metadata(percentage_df, absolute_df, different_alts, params, param_name
 	ref_dots_perc = sum_by_call(percentage_df, ".", True)
 	ref_dots_abs = sum_by_call(absolute_df, ".", True)
 
-	delta_dots_perc = ref_dots_perc - sample_dots_perc
-	delta_dots_abs = ref_dots_abs - sample_dots_abs
+	delta_dots_perc = abs(ref_dots_perc - sample_dots_perc)
+	delta_dots_abs = abs(ref_dots_abs - sample_dots_abs)
 
 	sample_hets_perc = sum_by_call(percentage_df, "0/1")
 	sample_hets_abs = sum_by_call(absolute_df, "0/1")
 	ref_hets_perc = sum_by_call(percentage_df, "0/1", True)
 	ref_hets_abs = sum_by_call(absolute_df, "0/1", True)
 
-	delta_hets_perc = ref_hets_perc - sample_hets_perc
-	delta_hets_abs = ref_hets_abs - sample_hets_abs
+	delta_hets_perc = abs(ref_hets_perc - sample_hets_perc)
+	delta_hets_abs = abs(ref_hets_abs - sample_hets_abs)
 
 	# sums of homs
 	sample_homs_perc = sum_by_call(percentage_df, "1/1")+ sum_by_call(percentage_df, "0/0")
@@ -266,8 +264,8 @@ def calc_metadata(percentage_df, absolute_df, different_alts, params, param_name
 	ref_homs_perc = sum_by_call(percentage_df, "1/1", True) + sum_by_call(percentage_df, "0/0", True)
 	ref_homs_abs = sum_by_call(absolute_df, "1/1", True) + sum_by_call(absolute_df, "0/0", True)
 
-	delta_homs_perc = ref_homs_perc - sample_homs_perc
-	delta_homs_abs = ref_homs_abs - sample_homs_abs
+	delta_homs_perc = abs(ref_homs_perc - sample_homs_perc)
+	delta_homs_abs = abs(ref_homs_abs - sample_homs_abs)
 
 	idx = pd.MultiIndex.from_tuples(tuples = [params + ["sample", "dots"],
 												params + ["sample", "hets"],
@@ -293,6 +291,12 @@ def calc_metadata(percentage_df, absolute_df, different_alts, params, param_name
 	return metadata_df
 
 
+def add_sample_name_to_columns(sample_names, dfs):
+	for sn, df in zip(sample_names, dfs):
+		mux = pd.MultiIndex.from_tuples([(sn, col) for col in df.columns])
+		df.columns = mux
+
+
 def main():
 	parser = argparse.ArgumentParser()
 	parser.add_argument("input_file")
@@ -301,21 +305,26 @@ def main():
 	parser.add_argument("param_names", nargs="*")
 	args = parser.parse_args()
 
+	params, param_names = parse_param_string(args.param_string, args.param_names)
 	sample_df = parse_vcf(args.input_file)
 	ref_df = parse_vcf(args.comparison_file)
 
 	different_alts = remove_differing_alts(sample_df, ref_df)
 	sample_state_dfs, ref_state_dfs = build_state_dfs(sample_df, ref_df)
-	transition_count_df = build_transition_df(sample_df, ref_df)
-	
-	percentage_matrix, absolute_matrix = build_transition_matrices(transition_count_df)
-	transition_heatmap = build_transition_heatmap(percentage_matrix)
+	abs_transition_count_df, percentage_transition_count_df = build_transition_df(sample_df, ref_df)
 
-	params, param_names = parse_param_string(args.param_string, args.param_names)
-	metadata = calc_metadata(percentage_matrix, absolute_matrix, different_alts, params, param_names)
+	abs_confusion_matrices = build_transition_matrices(abs_transition_count_df)
+	percentage_confusion_matrices = build_transition_matrices(percentage_transition_count_df)
+	transition_heatmaps = [build_transition_heatmap(m) for m in percentage_confusion_matrices]
 
-	confusion_vars = calc_confusion_variables(absolute_matrix, params, param_names)
-	confusion_vars_missing = calc_confusion_variables(absolute_matrix, params, param_names, include_missing=True)
+	metadata = [calc_metadata(pm, am, different_alts, params, param_names) for (pm, am) in zip(percentage_confusion_matrices, abs_confusion_matrices)]
+
+	confusion_vars = [calc_confusion_variables(m, params, param_names) for m in abs_confusion_matrices]
+	confusion_vars_missing = [calc_confusion_variables(m, params, param_names, include_missing=True) for m in abs_confusion_matrices]
+
+	# add sample names to confusion vars
+	add_sample_name_to_columns(abs_transition_count_df.columns, confusion_vars)
+	add_sample_name_to_columns(abs_transition_count_df.columns, confusion_vars_missing)
 
 	with open("input_sample_counts.csv", "w") as f:
 		sample_state_dfs[0].to_csv(f)
@@ -329,19 +338,21 @@ def main():
 	with open("ref_position_counts.csv", "w") as f:
 		ref_state_dfs[1].to_csv(f)
 
-	with open("metadata.csv", "w") as f:
-		metadata.to_csv(f)
+	# column names of transition_dfs are sample names
+	for i, sample_name in enumerate(abs_transition_count_df.columns):
+		with open(f"{sample_name}_metadata.csv", "w") as f:
+			metadata[i].to_csv(f)
 
-	transition_heatmap.savefig("heatmap.png")
+		transition_heatmaps[i].savefig(f"{sample_name}_heatmap.png")
 
-	with open("matrix.csv", "w") as f:
-		percentage_matrix.to_csv(f)
+		with open(f"{sample_name}_matrix.csv", "w") as f:
+			percentage_confusion_matrices[i].to_csv(f)
 
-	with open("confusion_vars.csv", "w") as f:
-		confusion_vars.to_csv(f)
+		with open(f"{sample_name}_confusion_vars.csv", "w") as f:
+			confusion_vars[i].to_csv(f)
 
-	with open("confusion_vars_missing.csv", "w") as f:
-		confusion_vars_missing.to_csv(f)
+		with open(f"{sample_name}_confusion_vars_missing.csv", "w") as f:
+			confusion_vars_missing[i].to_csv(f)
 
 
 if __name__ == '__main__':
