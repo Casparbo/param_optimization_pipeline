@@ -83,7 +83,7 @@ process metaAnalysis {
   output:
   publishDir "${params.outdir}", mode: "copy"
   path "metadata_*.png"
-  path "top_params_*.csv"
+  path "top_params_*.png"
 
   script:
   """

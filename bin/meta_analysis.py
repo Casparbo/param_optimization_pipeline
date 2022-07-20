@@ -5,9 +5,16 @@ import functools
 
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.backends.backend_pdf as pdf
 import seaborn as sns
-import numpy as np
+
+
+def table_from_df(df):
+	"""create a 2d-list out of a pandas dataframe, including index, excluding column names"""
+	cell_text = []
+	for row in range(len(df)):
+		cell_text.append([df.index[row]] + df.iloc[row].to_list())
+
+	return cell_text
 
 
 def per_sample_stats(df_list, n):
@@ -22,9 +29,16 @@ def per_sample_stats(df_list, n):
 		top = df.head(n).iloc[:, :-3].reset_index(drop=True)
 		top_list.append(top)
 
-	merged = functools.reduce(lambda left, right: left.merge(right, how="inner"), top_list)
-	
-	return merged
+	combined = functools.reduce(lambda left, right: pd.concat([left, right]), top_list)
+	count_df = combined.groupby(combined.columns.to_list(), as_index=False).size().rename({"size": "count"}, axis="columns")
+
+	fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(20, 30))
+	fig.suptitle(f"Occurence of parameter combination is top {n} f1-scores per sample", fontsize=20)
+	sns.barplot(x=count_df.index, y=count_df["count"], ax=ax1)
+	ax2.table(cellText=table_from_df(count_df), colLabels=["index"] + count_df.columns.to_list(), loc="center")
+	ax2.axis("off")
+
+	return fig
 
 
 def concat_dfs(df_list):
@@ -115,11 +129,8 @@ def main():
 	figs, fig_3d = plot_f1_score(confusion_vars, "F1-score over params, excluding missing data")
 	figs_missing, fig_3d_missing = plot_f1_score(confusion_vars_missing, "F1-score over params, including missing data")
 
-	with open("top_params_no_missing.csv", "w") as f:
-		top_params.to_csv(f)
-
-	with open("top_params_missing.csv", "w") as f:
-		top_params_missing.to_csv(f)
+	top_params.savefig("top_params_no_missing.png")
+	top_params_missing.savefig("top_params_missing.png")
 
 	figs.savefig("metadata_no_missing.png")
 	fig_3d.savefig("metadata_3d_no_missing.png")
