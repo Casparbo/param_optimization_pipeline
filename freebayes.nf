@@ -59,16 +59,16 @@ process freebayes {
   --min-supporting-allele-qsum $minQsum \
   --read-mismatch-limit $readMismatchLimit \
   --min-alternate-fraction $minAlternateFraction \
-  ${if(noMnps) {
-      return'--no-mnps'
+  ${if(noComplex) {
+      '--no-complex'
     } else {
-      return ''
+      ''
     }
   } \
-  ${if(noComplex) {
-      return'--no-complex'
+  ${if(noMnps) {
+      '--no-mnps'
     } else {
-      return ''
+      ''
     }
   } \
   --fasta-reference $fasta \
@@ -149,14 +149,14 @@ workflow callVariants {
     minCoverageThresh = Channel.from(params.minCoverageThresh)
 
     if(workflow.stubRun) {
-      minQsum = minQsum.first().mix(minQsum.last())
-      readMismatchLimit = readMismatchLimit.first().mix(readMismatchLimit.last())
-      minAlternateFraction = minAlternateFraction.first().mix(minAlternateFraction.last())
-      noMnps = noMnps.first().mix(noMnps.last())
-      noComplex = noComplex.first().mix(noComplex.last())
+      minQsum = minQsum.first().concat(minQsum.last())
+      readMismatchLimit = readMismatchLimit.first().concat(readMismatchLimit.last())
+      minAlternateFraction = minAlternateFraction.first().concat(minAlternateFraction.last())
+      noMnps = noMnps.first().concat(noMnps.last())
+      noComplex = noComplex.first().concat(noComplex.last())
 
-      hetCorrectFilter = hetCorrectFilter.first().mix(hetCorrectFilter.last())
-      minCoverageThresh = minCoverageThresh.first().mix(minCoverageThresh.last())
+      hetCorrectFilter = hetCorrectFilter.first().concat(hetCorrectFilter.last())
+      minCoverageThresh = minCoverageThresh.first().concat(minCoverageThresh.last())
     }
 
     splitBedFile(bedFile)
