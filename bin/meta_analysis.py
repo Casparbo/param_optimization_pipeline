@@ -17,7 +17,7 @@ def table_from_df(df):
 	return cell_text
 
 
-def per_sample_stats(df_list, n):
+def per_sample_stats(df_list, n, title):
 	"""find the top n parameter combinations for each df and then return those combinations that occur in all samples"""
 	df_list = [df.copy() for df in df_list]
 	top_list = []
@@ -32,11 +32,16 @@ def per_sample_stats(df_list, n):
 	combined = functools.reduce(lambda left, right: pd.concat([left, right]), top_list)
 	count_df = combined.groupby(combined.columns.to_list(), as_index=False).size().rename({"size": "count"}, axis="columns")
 
-	fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(20, 30))
-	fig.suptitle(f"Occurence of parameter combination is top {n} f1-scores per sample", fontsize=20)
+	fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(50, 20))
+	fig.suptitle(title, fontsize=20)
+	fig.tight_layout()
+	fig.subplots_adjust(top=0.95)
 	sns.barplot(x=count_df.index, y=count_df["count"], ax=ax1)
-	ax2.table(cellText=table_from_df(count_df), colLabels=["index"] + count_df.columns.to_list(), loc="center")
 	ax2.axis("off")
+	table = ax2.table(cellText=table_from_df(count_df), colLabels=["index"] + count_df.columns.to_list(), loc="center")
+	table.auto_set_font_size(False)
+	table.set_fontsize(10)
+	table.scale(1, 1.5)
 
 	return fig
 
@@ -120,8 +125,8 @@ def main():
 	confusion_vars_list = [pd.read_csv(file, index_col=0, header=[0, 1]) for file in args.confusion_vars]
 	confusion_vars_missing_list = [pd.read_csv(file, index_col=0, header=[0, 1]) for file in args.confusion_vars]
 
-	top_params = per_sample_stats(confusion_vars_list, args.top_params_thresh)
-	top_params_missing = per_sample_stats(confusion_vars_missing_list, args.top_params_thresh)
+	top_params = per_sample_stats(confusion_vars_list, args.top_params_thresh, "Top param combinations, excluding missing data")
+	top_params_missing = per_sample_stats(confusion_vars_missing_list, args.top_params_thresh, "Top param combinations, including missing data")
 
 	confusion_vars = concat_dfs(confusion_vars_list)
 	confusion_vars_missing = concat_dfs(confusion_vars_missing_list)
