@@ -2,9 +2,6 @@
 import argparse
 
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
-import numpy as np
 
 
 def assemble_sort_df(chromosomes, positions, refs, alts, data_columns):
@@ -166,20 +163,6 @@ def build_transition_matrices(count_df):
 	return matrices
 
 
-def build_transition_heatmap(matrix_df):
-	"""build a heatmap out of a transition matrix and save as heatmap.png"""
-	matrix_df = matrix_df.astype("float32")
-	
-	fig = plt.figure(figsize=(10, 10))
-
-	heatmap = sns.heatmap(matrix_df, cmap="Reds", annot=True)
-	heatmap.set(xlabel="Sample", ylabel="Reference")
-	
-	fig.add_axes(heatmap)
-
-	return fig
-
-
 def calc_confusion_variables(matrix_df, params, param_names, include_missing=False):
 	"""calculate sensitivity, specificity and f1-score of the transition matrix, excluding '.'-calls"""
 	# omit "." calls
@@ -316,7 +299,6 @@ def main():
 
 	abs_confusion_matrices = build_transition_matrices(abs_transition_count_df)
 	percentage_confusion_matrices = build_transition_matrices(percentage_transition_count_df)
-	transition_heatmaps = [build_transition_heatmap(m) for m in percentage_confusion_matrices]
 
 	metadata = [calc_metadata(pm, am, different_alts, params, param_names) for (pm, am) in zip(percentage_confusion_matrices, abs_confusion_matrices)]
 
@@ -343,8 +325,6 @@ def main():
 	for i, sample_name in enumerate(abs_transition_count_df.columns):
 		with open(f"{sample_name}_metadata.csv", "w") as f:
 			metadata[i].to_csv(f)
-
-		transition_heatmaps[i].savefig(f"{sample_name}_heatmap.png")
 
 		with open(f"{sample_name}_matrix.csv", "w") as f:
 			percentage_confusion_matrices[i].to_csv(f)

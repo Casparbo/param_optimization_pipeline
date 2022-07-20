@@ -49,7 +49,6 @@ process vcfPandas {
   
   path "*_confusion_vars.csv", emit: confusionVars
   path "*_confusion_vars_missing.csv", emit: confusionVarsMissing
-  path "*_heatmap.png"
   // also publish all other generated csv
   path "*.csv"
 
