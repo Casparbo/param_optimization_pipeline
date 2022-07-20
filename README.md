@@ -33,8 +33,16 @@ Profiles may be used. A dataset defines the following params:
 Per default, there is an implementation for variant calling using freebayes. It is possible to add additional custom variant callers.
 The existing implementation for freebayes may be used as a reference.
 The file with the implementation of the variant caller must include a workflow _callVariants_, which will be imported by the main workflow.
-This workflow must return a vcf file and the *param-string*.
-The param string contains the values of all sweeped parameters, seperated by \_. Their order should correspond to the order of names defined in the config.
+This workflow will take as input:
+- fasta file
+- fasta index file
+- bed file
+- list of bam files
+- bam index
+This workflow will emit as output a tuple containing the *param_string* and a vcf file.
+The param string contains the values of all sweeped parameters, seperated by \_. Their order should correspond to the order of names defined in a config file.
+This config file and thus the custom variant caller can be used by adding it to the run command using the *-c* option, i.e.
+```nextflow run main.nf -c <custom config>```
 The variant caller config defines the following params:
 - outdir - the output directory for final results
 - workflow - name of the file that defines the callVariants workflow
