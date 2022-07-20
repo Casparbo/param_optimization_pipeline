@@ -88,7 +88,7 @@ process metaAnalysis {
 
   script:
   """
-  meta_analysis.py --confusion_vars $confusionVarsNoMissing --confusion_vars_missing $confusionVarsMissing --top_params_thresh 10
+  meta_analysis.py --confusion_vars $confusionVarsNoMissing --confusion_vars_missing $confusionVarsMissing --top_params_thresh 20
   """
 }
 
