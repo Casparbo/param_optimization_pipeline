@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import os
 
 import pandas as pd
 
@@ -44,10 +45,12 @@ def combineFrames(df_list):
 
 def main():
 	parser = argparse.ArgumentParser()
-	parser.add_argument("filelist", nargs="*")
+	parser.add_argument("dirlist", nargs="*")
 	args = parser.parse_args()
 
-	df_list = read_data_frames(args.filelist)
+	filelist = [os.path.join(d, f) for d in args.dirlist for f in os.listdir(d)]
+
+	df_list = read_data_frames(filelist)
 	df_buckets = combineFrames(df_list)
 
 	for sample_name, df in df_buckets.items():

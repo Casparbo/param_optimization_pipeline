@@ -26,7 +26,7 @@ def per_sample_stats(df_list, n, title):
 		df.sort_values("f1-score", ascending=False, inplace=True)
 
 		# get only params of top n f1-scores
-		top = df.head(n).iloc[:, :-3].reset_index(drop=True)
+		top = pd.concat([df.head(n).iloc[:, :-3].reset_index(drop=True), df.head(n)["f1-score"].reset_index(drop=True)], axis=1)
 		top_list.append(top)
 
 	combined = functools.reduce(lambda left, right: pd.concat([left, right]), top_list)

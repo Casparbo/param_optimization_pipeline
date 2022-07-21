@@ -58,12 +58,28 @@ process vcfPandas {
   """
 }
 
+// to avoid a too long input for next process, collect files into directory and then output that
+// preserve idx for next process
+process collectOutputToDirectory {
+  input:
+  tuple path(input_files, stageAs: "*.csv"), val(idx)
+
+  output:
+  tuple path("filedir"), val(idx)
+
+  script:
+  """
+  mkdir filedir
+  ln $input_files filedir
+  """
+}
+
 process combineAnalyses {
   debug true
   conda "pandas"
   beforeScript "ulimit -Ss unlimited"
   input:
-  tuple path(fileList, stageAs: "*.csv"), val(idx)
+  tuple path(fileList, stageAs: "*filedir"), val(idx)
 
   output:  
   tuple path("*_combined.csv"), val(idx)
@@ -111,13 +127,15 @@ workflow {
   callVariants(fasta, fastaIndex, bedFile, bamlist, bamindex)
 
   vcfPandas(callVariants.out.combine(comparison).combine(paramNames))
-  // add number so that we can later tell which one is with and without missing data (0: without, 1: with)
-  confusionVarsFiles = vcfPandas.out.confusionVars.collect().concat(Channel.from(0)).toList()
-  confusionVarsMissingFiles = vcfPandas.out.confusionVarsMissing.collect().concat(Channel.from(1)).toList()
-  confusionVarsFilesBoth = confusionVarsFiles.concat(confusionVarsMissingFiles)
 
-  combineAnalyses(confusionVarsFilesBoth)
-  //TODO: groupTuple, figure out how to bring this all together in meta_analysis.py!!!
+  // add number so that we can later tell which one is with and without missing data (0: without, 1: with)
+  confusionBuckets = vcfPandas.out.confusionVars.flatten().collate(50).map{[it, 0]}
+  confusionBucketsMissing = vcfPandas.out.confusionVarsMissing.flatten().collate(50).map{[it, 1]}
+  confusionBucketsBoth = confusionBuckets.concat(confusionBucketsMissing)
+
+  collectOutputToDirectory(confusionBucketsBoth)
+
+  combineAnalyses(collectOutputToDirectory.out.groupTuple(by: 1))
 
   // group by added number (0/1), then fork and recombine the two paths so that the one without missing data comes first
   bothCombined = combineAnalyses.out.groupTuple(by: 1).branch{no_missing: it[1] == 0; missing: it[1] == 1}
