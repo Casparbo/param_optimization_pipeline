@@ -57,16 +57,28 @@ def parse_vcf(input_file):
 def remove_differing_alts(sample_df, ref_df):
 	"""remove rows in both dfs where alts are different between ref and sample"""
 	different_alts = 0
+	sample_to_drop = set()
+	ref_to_drop = set()
 
 	for chrom, pos in sample_df.index:
-		if (chrom, pos) not in ref_df.index and (chrom, pos) in sample_df.index:
-			sample_df.drop(index=(chrom, pos), inplace=True)
+		if (chrom, pos) not in ref_df.index:
+			sample_to_drop.add((chrom, pos))
+		# some variant callers make different lines for multiple alt, resulting in a series being returned here
+		elif type(sample_df.loc[chrom].loc[pos]["alt"]) is not str:
+			if sample_df.loc[chrom].loc[pos]["alt"].all() != ref_df.loc[chrom].loc[pos]["alt"]:
+				sample_to_drop.add((chrom, pos))
+				ref_to_drop.add((chrom, pos))
 		elif sample_df.loc[chrom].loc[pos]["alt"] != ref_df.loc[chrom].loc[pos]["alt"]:
-			different_alts += 1
-			ref_df.drop(index=(chrom, pos), inplace=True)
-			sample_df.drop(index=(chrom, pos), inplace=True)
+			sample_to_drop.add((chrom, pos))
+			ref_to_drop.add((chrom, pos))
 
-	return different_alts
+	for chrom, pos in sample_to_drop:
+		sample_df.drop(index=(chrom, pos), inplace=True)
+
+	for chrom, pos in ref_to_drop:
+		ref_df.drop(index=(chrom, pos), inplace=True)
+
+	return len(ref_df)
 
 
 def count_states(sample_df):
