@@ -77,7 +77,7 @@ process combineVCF {
   tuple val(callingMethod), val(minMQ), val(minBQ), path(vcf, stageAs: "*.vcf")
 
   output:
-  publishDir "${params.outdir}/${minMQ}_${minBQ}"
+  publishDir "${params.outdir}/${minMQ}_${minBQ}", mode:"copy", enabled: workflow.stubRun
   tuple val("${callingMethod}_${minMQ}_${minBQ}"), path("combined.vcf")
 
   script:
