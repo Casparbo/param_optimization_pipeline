@@ -30,8 +30,8 @@ Profiles may be used. A dataset defines the following params:
 - comparison - reference-vcf
 
 ## Adding a custom variant caller
-Per default, there is an implementation for variant calling using freebayes. It is possible to add additional custom variant callers.
-The existing implementation for freebayes may be used as a reference.
+Per default, there is an implementation for variant calling using freebayes and bcftools. It is possible to add additional custom variant callers.
+The existing implementations may be used as a reference.
 The file with the implementation of the variant caller must include a workflow _callVariants_, which will be imported by the main workflow.
 This workflow will take as input:
 - fasta file

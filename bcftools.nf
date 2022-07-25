@@ -34,11 +34,12 @@ process bcftools {
   path bamfile
   path bamindex
 
+  each callingMethod
   each minMQ
   each minBQ
 
   output:
-  tuple val(minMQ), val(minBQ), path("out.vcf")
+  tuple val(callingMethod), val(minMQ), val(minBQ), path("out.vcf")
 
   script:
   """
@@ -49,7 +50,9 @@ process bcftools {
   -f $fasta \
   --regions-file $bedFile \
   $bamfile \
-  | bcftools call -c -Ov -o out.vcf -f GQ
+  | bcftools call \
+   --$callingMethod \
+    -Ov -o out.vcf -f GQ
   """
 }
 
@@ -57,10 +60,10 @@ process sortVCFsamples {
   conda "natsort"
 
   input:
-  tuple val(minMQ), val(minBQ), path(vcf)
+  tuple val(callingMethod), val(minMQ), val(minBQ), path(vcf)
 
   output:
-  tuple val(minMQ), val(minBQ), path("sorted.vcf")
+  tuple val(callingMethod), val(minMQ), val(minBQ), path("sorted.vcf")
 
   script:
   """
@@ -71,38 +74,15 @@ process sortVCFsamples {
 process combineVCF {
   container "https://depot.galaxyproject.org/singularity/vcftools:0.1.16--pl5321hd03093a_7"
   input:
-  tuple val(minMQ), val(minBQ), path(vcf, stageAs: "*.vcf")
+  tuple val(callingMethod), val(minMQ), val(minBQ), path(vcf, stageAs: "*.vcf")
 
   output:
   publishDir "${params.outdir}/${minMQ}_${minBQ}"
-  tuple val("${minMQ}_${minBQ}"), path("combined.vcf")
+  tuple val("${callingMethod}_${minMQ}_${minBQ}"), path("combined.vcf")
 
   script:
   """
   vcf-concat $vcf > combined.vcf
-  """
-}
-
-process lgcPostProcessing {
-  conda "natsort biopython"
-  
-  input:
-  tuple val(minMQ), val(minBQ), path(vcf)
-
-  each hetCorrectFilter
-  each minCoverageThresh
-
-  output:
-  publishDir "${params.outdir}/${minMQ}_${minBQ}_${hetCorrectFilter}_${minCoverageThresh}", mode:"copy", enabled: workflow.stubRun
-  tuple val("${minMQ}_${minBQ}_${hetCorrectFilter}_${minCoverageThresh}"), path("filtered.vcf")
-
-  script:
-  """
-  VCF_postprocessing.py \
-    --input $vcf \
-    --output filtered.vcf \
-    --genotype-min-count-het-call-threshold $hetCorrectFilter \
-    --genotype-min-coverage-threshold $minCoverageThresh
   """
 }
 
@@ -115,29 +95,25 @@ workflow callVariants {
     bamindex
 
   main:
+    callingMethod = Channel.from(params.callingMethod)
     minMQ = Channel.from(params.minMQ)
     minBQ = Channel.from(params.minBQ)
 
-    hetCorrectFilter = Channel.from(params.hetCorrectFilter)
-    minCoverageThresh = Channel.from(params.minCoverageThresh)
 
     if(workflow.stubRun) {
+      callingMethod = callingMethod.first().concat(callingMethod.last())
       minMQ = minMQ.first().concat(minMQ.last())
       minBQ = minBQ.first().concat(minBQ.last())
-
-      hetCorrectFilter = hetCorrectFilter.first().concat(hetCorrectFilter.last())
-      minCoverageThresh = minCoverageThresh.first().concat(minCoverageThresh.last())
     }
 
     splitBedFile(bedFile)
     
     bcftools(fasta, fastaIndex, splitBedFile.out.flatMap(), bamlist.collect(), bamindex.collect(),
-              minMQ, minBQ)
+              callingMethod, minMQ, minBQ)
     sortVCFsamples(bcftools.out)
     sortVCFsamples.out.collect()
-    //group by the first 2 elements of tuple (which are the parameters)
-    combineVCF(sortVCFsamples.out.groupTuple(by: 0..1))
-    //lgcPostProcessing(combineVCF.out, hetCorrectFilter, minCoverageThresh)
+    //group by the first 3 elements of tuple (which are the parameters)
+    combineVCF(sortVCFsamples.out.groupTuple(by: 0..2))
 
   emit:
     combineVCF.out
