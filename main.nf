@@ -9,12 +9,12 @@ def createBamChannels(bamfile) {
   
   if(fileExtension.equals("bam")) {
     bamlist << file(bamfile)
-    bamindex << file(bamfile + ".bai")
+    bamindex << file(bamfile + ".{bai, csi}")
   } else {
     bamfile.eachLine {line ->
       if (line) {
         bamlist << file(line)
-        bamindex << file(line + ".bai")
+        bamindex << file(line + ".{bai, csi}")
       }
     }
   }
