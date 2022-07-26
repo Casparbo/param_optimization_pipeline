@@ -23,6 +23,8 @@ def per_sample_stats(df_list, n, title):
 	top_list = []
 	for df in df_list:
 		df.columns = df.columns.droplevel(0)
+		# sort by param values first in case f1-scores occur multiple times
+		df.sort_values(df.columns.to_list()[:-3], ascending=False, inplace=True)
 		df.sort_values("f1-score", ascending=False, inplace=True)
 
 		# get only params of top n f1-scores
