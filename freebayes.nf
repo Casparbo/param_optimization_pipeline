@@ -23,6 +23,8 @@ process splitBedFile {
 }
 
 process freebayes {
+  errorStrategy "retry"
+  maxRetries 3
   container = params.container
 
   input:
