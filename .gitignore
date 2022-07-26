@@ -2,6 +2,7 @@
 work
 # logs and stuff
 .nextflow*
+*.log
 # output directory that is created while running
 output
 # directory for input files, not necessary
