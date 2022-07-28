@@ -52,7 +52,8 @@ def per_sample_stats(df_list, threshold, title):
 
 	occurence_df = functools.reduce(lambda left, right: pd.concat([left, right[right.columns[-1]]], axis=1), occurence_list)
 
-	top_params = occurence_df[occurence_df[threshold] > 0]
+	# too many results lead to overcrowded graphs
+	top_params = occurence_df[occurence_df[threshold] > 0].head(20)
 	cutoffs = pd.DataFrame()
 	param_length = 0
 
