@@ -7,6 +7,8 @@ work
 output
 # directory for input files, not necessary
 input
+# directory for datasets
+dataset
 # directory for configuation files containing local paths
 local_conf
 # report directory that is generated while running

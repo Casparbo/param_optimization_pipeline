@@ -7,6 +7,7 @@ This pipeline executes parameter-sweeps in variant callers.
 - Conda
 
 ## Set-up
+Download the example dataset from ```<LINK>```
 Quickly run the pipeline through ```nextflow run <repo-name>```.
 If you want to have the code, you can do the following:
 1. Install Requirements
