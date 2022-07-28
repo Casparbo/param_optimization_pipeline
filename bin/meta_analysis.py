@@ -21,15 +21,20 @@ def table_from_df(df):
 def param_occurence_in_percentage(df_list, percentage):
 	df_list = [df.copy() for df in df_list]
 	top_list = []
-	
+
+	# prep dfs
 	for df in df_list:
 		df.columns = df.columns.droplevel(0)
 		# sort by param values first in case f1-scores occur multiple times
 		df.sort_values(df.columns.to_list()[:-3], ascending=False, inplace=True)
 		df.sort_values("f1-score", ascending=False, inplace=True)
+	
+	thresh_f1_score = max([df["f1-score"].max() for df in df_list]) * percentage / 100
 
+	# find param combinations above threshold of max
+	for df in df_list:
 		# get only params of top percentage f1-scores
-		thresh_f1_score = df["f1-score"].max() * percentage / 100
+		#thresh_f1_score = df["f1-score"].max() * percentage / 100
 		top = df[df["f1-score"] > thresh_f1_score].reset_index(drop=True).drop(["sensitivity", "specificity"], axis=1)
 		top_list.append(top)
 
@@ -47,7 +52,7 @@ def per_sample_stats(df_list, threshold, title):
 
 	occurence_df = functools.reduce(lambda left, right: pd.concat([left, right[right.columns[-1]]], axis=1), occurence_list)
 
-	top_params = occurence_df[occurence_df[threshold] > 1]
+	top_params = occurence_df[occurence_df[threshold] > 0]
 	cutoffs = pd.DataFrame()
 	param_length = 0
 
@@ -61,7 +66,6 @@ def per_sample_stats(df_list, threshold, title):
 
 	data_length = len(cutoffs.columns[param_length:])
 	cutoffs.columns = cutoffs.columns[:param_length].to_list() + [f"occurs {data_length - x} times" for x in range(data_length)]
-	print(cutoffs.columns)
 
 	fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(50, 20))
 	fig.suptitle(title, fontsize=20)
