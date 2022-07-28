@@ -5,6 +5,7 @@ import functools
 
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 import seaborn as sns
 
 
@@ -17,30 +18,69 @@ def table_from_df(df):
 	return cell_text
 
 
-def per_sample_stats(df_list, n, title):
-	"""find the top n parameter combinations for each df and then return those combinations that occur in all samples"""
+def param_occurence_in_percentage(df_list, percentage):
 	df_list = [df.copy() for df in df_list]
 	top_list = []
+	
 	for df in df_list:
 		df.columns = df.columns.droplevel(0)
 		# sort by param values first in case f1-scores occur multiple times
 		df.sort_values(df.columns.to_list()[:-3], ascending=False, inplace=True)
 		df.sort_values("f1-score", ascending=False, inplace=True)
 
-		# get only params of top n f1-scores
-		top = pd.concat([df.head(n).iloc[:, :-3].reset_index(drop=True), df.head(n)["f1-score"].reset_index(drop=True)], axis=1)
+		# get only params of top percentage f1-scores
+		thresh_f1_score = df["f1-score"].max() * percentage / 100
+		top = df[df["f1-score"] > thresh_f1_score].reset_index(drop=True).drop(["sensitivity", "specificity"], axis=1)
 		top_list.append(top)
 
 	combined = functools.reduce(lambda left, right: pd.concat([left, right]), top_list)
-	count_df = combined.groupby(combined.columns.to_list(), as_index=False).size().rename({"size": "count"}, axis="columns")
+	count_df = combined.groupby(combined.columns.to_list()[:-1], as_index=False).size()
+	count_df = count_df.rename({"size": percentage}, axis="columns").sort_values(percentage, ascending=False).reset_index(drop=True)
+
+	return count_df
+
+
+def per_sample_stats(df_list, threshold, title):
+	occurence_list = []
+	for percentage in range(101):
+		occurence_list.append(param_occurence_in_percentage(df_list, percentage))
+
+	occurence_df = functools.reduce(lambda left, right: pd.concat([left, right[right.columns[-1]]], axis=1), occurence_list)
+
+	top_params = occurence_df[occurence_df[threshold] > 1]
+	cutoffs = pd.DataFrame()
+	param_length = 0
+
+	for i, row in top_params.iterrows():
+		params = row[:-101]
+		data = row[-101:]
+		param_length = len(params)
+		changes = pd.Series([perc for perc in data.index[1:] if data[perc] != data[perc-1]])
+		new_row = pd.concat([params, changes])
+		cutoffs = cutoffs.append(new_row, ignore_index=True)
+
+	data_length = len(cutoffs.columns[param_length:])
+	cutoffs.columns = cutoffs.columns[:param_length].to_list() + [f"occurs {data_length - x} times" for x in range(data_length)]
+	print(cutoffs.columns)
 
 	fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(50, 20))
 	fig.suptitle(title, fontsize=20)
 	fig.tight_layout()
-	fig.subplots_adjust(top=0.95)
-	sns.barplot(x=count_df.index, y=count_df["count"], ax=ax1)
+	fig.subplots_adjust(top=0.8)
+
+	legend_patches = []
+
+	# ignore actual param values in plotting, just occurences
+	for column, color in zip(cutoffs.iloc[:, param_length:].columns[::-1], sns.color_palette()):
+		sns.barplot(x=cutoffs.index, y=cutoffs[column], color=color, ax=ax1)
+		legend_patches.append(mpatches.Patch(color=color, label=column))
+
+	ax1.legend(handles=legend_patches)
+	ax1.set_ylabel("percentage")
+	ax1.set_ylim((90, 100))
+
 	ax2.axis("off")
-	table = ax2.table(cellText=table_from_df(count_df), colLabels=["index"] + count_df.columns.to_list(), loc="center")
+	table = ax2.table(cellText=table_from_df(cutoffs), colLabels=["index"]+cutoffs.columns.to_list(), loc="center")
 	table.auto_set_font_size(False)
 	table.set_fontsize(10)
 	table.scale(1, 1.5)
@@ -127,8 +167,10 @@ def main():
 	confusion_vars_list = [pd.read_csv(file, index_col=0, header=[0, 1]) for file in args.confusion_vars]
 	confusion_vars_missing_list = [pd.read_csv(file, index_col=0, header=[0, 1]) for file in args.confusion_vars]
 
-	top_params = per_sample_stats(confusion_vars_list, args.top_params_thresh, "Top param combinations, excluding missing data")
-	top_params_missing = per_sample_stats(confusion_vars_missing_list, args.top_params_thresh, "Top param combinations, including missing data")
+	top_params = per_sample_stats(confusion_vars_list, args.top_params_thresh,
+		"Top percentage where param combinations occur, excluding missing data")
+	top_params_missing = per_sample_stats(confusion_vars_missing_list, args.top_params_thresh,
+		"Top percentage where param combinations occur, including missing data")
 
 	confusion_vars = concat_dfs(confusion_vars_list)
 	confusion_vars_missing = concat_dfs(confusion_vars_missing_list)
@@ -136,8 +178,8 @@ def main():
 	figs, fig_3d = plot_f1_score(confusion_vars, "F1-score over params, excluding missing data")
 	figs_missing, fig_3d_missing = plot_f1_score(confusion_vars_missing, "F1-score over params, including missing data")
 
-	top_params.savefig("top_params_no_missing.png")
-	top_params_missing.savefig("top_params_missing.png")
+	top_params.savefig("top_params_no_missing.png", bbox_inches="tight")
+	top_params_missing.savefig("top_params_missing.png", bbox_inches="tight")
 
 	figs.savefig("metadata_no_missing.png")
 	fig_3d.savefig("metadata_3d_no_missing.png")
