@@ -176,8 +176,8 @@ def build_transition_matrices(count_df):
 
 
 def calc_confusion_variables(matrix_df, params, param_names, include_missing=False):
-	"""calculate sensitivity, specificity and f1-score of the transition matrix, excluding '.'-calls"""
-	# omit "." calls
+	"""calculate sensitivity, specificity and f1-score of the transition matrix"""
+	# omit "." calls?
 	if include_missing:
 		no_points_matrix = matrix_df
 	else:
